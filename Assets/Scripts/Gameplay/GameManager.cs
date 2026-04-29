@@ -125,7 +125,19 @@ namespace CallKitty.Gameplay
                 player.ReceiveCards(hand);
             }
 
-            yield return new WaitForSeconds(1f); // Artificial delay for UI
+            if (VisualDealer.Instance != null)
+            {
+                bool dealingComplete = false;
+                VisualDealer.Instance.StartDealAnimation(() => dealingComplete = true);
+                yield return new WaitUntil(() => dealingComplete);
+                // Additional short delay after visual deal
+                yield return new WaitForSeconds(0.5f);
+            }
+            else
+            {
+                yield return new WaitForSeconds(1f); // Artificial delay for UI
+            }
+            
             ChangeState(GameState.Bidding);
         }
 

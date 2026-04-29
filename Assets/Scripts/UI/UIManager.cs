@@ -18,7 +18,7 @@ namespace CallKitty.UI
                 GameManager.Instance.OnStateChanged += HandleStateChanged;
             }
             
-            HideAllPanels();
+            // HideAllPanels(); // Commented out for testing the dealer
         }
 
         private void OnDestroy()
@@ -35,6 +35,9 @@ namespace CallKitty.UI
 
             switch (newState)
             {
+                case GameState.Dealing:
+                    arrangementPanel.SetActive(true);
+                    break;
                 case GameState.Bidding:
                     biddingPanel.SetActive(true);
                     break;
