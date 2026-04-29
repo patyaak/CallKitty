@@ -1,0 +1,100 @@
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+using CallKitty.Core;
+using CallKitty.Gameplay;
+
+namespace CallKitty.UI
+{
+    public class UIArrangementManager : MonoBehaviour
+    {
+        public static UIArrangementManager Instance { get; private set; }
+
+        [Header("Slots")]
+        [SerializeField] private UICardSlot unassignedPool;
+        [SerializeField] private UICardSlot[] handZones = new UICardSlot[4];
+        [SerializeField] private UICardSlot discardZone;
+
+        [Header("UI Elements")]
+        [SerializeField] private Button readyButton;
+        [SerializeField] private GameObject uiCardPrefab;
+
+        private void Awake()
+        {
+            if (Instance == null) Instance = this;
+            else Destroy(gameObject);
+
+            readyButton.onClick.AddListener(OnReadyClicked);
+        }
+
+        private void OnEnable()
+        {
+            // Disable button initially until cards are properly arranged
+            readyButton.interactable = false;
+        }
+
+        public void PopulateCards(List<Card> cards)
+        {
+            // Clear existing
+            foreach (Transform child in unassignedPool.transform) Destroy(child.gameObject);
+            foreach (var zone in handZones)
+                foreach (Transform child in zone.transform) Destroy(child.gameObject);
+            foreach (Transform child in discardZone.transform) Destroy(child.gameObject);
+
+            // Spawn new cards
+            foreach (var card in cards)
+            {
+                var cardObj = Instantiate(uiCardPrefab, unassignedPool.transform);
+                var uiCard = cardObj.GetComponent<UICard>();
+                uiCard.Initialize(card);
+            }
+
+            OnCardMoved();
+        }
+
+        public void OnCardMoved()
+        {
+            readyButton.interactable = ValidateArrangement();
+        }
+
+        private bool ValidateArrangement()
+        {
+            if (unassignedPool.transform.childCount > 0) return false;
+            
+            if (discardZone.transform.childCount != 1) return false;
+
+            foreach (var zone in handZones)
+            {
+                if (zone.transform.childCount != 3) return false;
+            }
+
+            return true;
+        }
+
+        private void OnReadyClicked()
+        {
+            if (!ValidateArrangement()) return;
+
+            // Extract the arrangement
+            List<List<Card>> arrangedHands = new List<List<Card>>();
+            foreach (var zone in handZones)
+            {
+                List<Card> hand = new List<Card>();
+                foreach (Transform child in zone.transform)
+                {
+                    hand.Add(child.GetComponent<UICard>().CardData);
+                }
+                arrangedHands.Add(hand);
+            }
+
+            Card discard = discardZone.transform.GetChild(0).GetComponent<UICard>().CardData;
+
+            // Send to the human player
+            Player humanPlayer = GameManager.Instance.Players[0];
+            humanPlayer.SetArrangement(arrangedHands, discard);
+
+            // Hide this UI (GameManager will handle state change when all are ready)
+            gameObject.SetActive(false);
+        }
+    }
+}
