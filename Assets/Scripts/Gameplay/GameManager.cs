@@ -49,8 +49,15 @@ namespace CallKitty.Gameplay
 
         private void Start()
         {
-            // For testing without UI
-            // InitializeGame();
+            // Start the game loop automatically for testing
+            // We wait one frame to ensure all other scripts (like UIManager) have initialized and subscribed to events
+            StartCoroutine(DelayedInit());
+        }
+
+        private IEnumerator DelayedInit()
+        {
+            yield return null; 
+            InitializeGame();
         }
 
         public void InitializeGame()
@@ -128,7 +135,7 @@ namespace CallKitty.Gameplay
             if (VisualDealer.Instance != null)
             {
                 bool dealingComplete = false;
-                VisualDealer.Instance.StartDealAnimation(() => dealingComplete = true);
+                VisualDealer.Instance.StartDealAnimation(Players[0].DealtCards, () => dealingComplete = true);
                 yield return new WaitUntil(() => dealingComplete);
                 // Additional short delay after visual deal
                 yield return new WaitForSeconds(0.5f);

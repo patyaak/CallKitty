@@ -16,9 +16,9 @@ namespace CallKitty.UI
             if (GameManager.Instance != null)
             {
                 GameManager.Instance.OnStateChanged += HandleStateChanged;
+                // Manually trigger for the initial state in case the event fired before we subscribed
+                HandleStateChanged(GameManager.Instance.CurrentState);
             }
-            
-            // HideAllPanels(); // Commented out for testing the dealer
         }
 
         private void OnDestroy()
@@ -31,18 +31,21 @@ namespace CallKitty.UI
 
         private void HandleStateChanged(GameState newState)
         {
+            Debug.Log($"[UIManager] HandleStateChanged: {newState}");
             HideAllPanels();
+
+            if (arrangementPanel == null) Debug.LogError("[UIManager] arrangementPanel is NOT assigned in the Inspector!");
 
             switch (newState)
             {
                 case GameState.Dealing:
-                    arrangementPanel.SetActive(true);
+                    if (arrangementPanel) arrangementPanel.SetActive(true);
                     break;
                 case GameState.Bidding:
-                    biddingPanel.SetActive(true);
+                    if (biddingPanel) biddingPanel.SetActive(true);
                     break;
                 case GameState.Arranging:
-                    arrangementPanel.SetActive(true);
+                    if (arrangementPanel) arrangementPanel.SetActive(true);
                     // Tell ArrangementManager to populate cards for human player
                     var humanCards = GameManager.Instance.Players[0].DealtCards;
                     UIArrangementManager.Instance?.PopulateCards(humanCards);

@@ -35,20 +35,8 @@ namespace CallKitty.UI
 
         public void PopulateCards(List<Card> cards)
         {
-            // Clear existing
-            foreach (Transform child in unassignedPool.transform) Destroy(child.gameObject);
-            foreach (var zone in handZones)
-                foreach (Transform child in zone.transform) Destroy(child.gameObject);
-            foreach (Transform child in discardZone.transform) Destroy(child.gameObject);
-
-            // Spawn new cards
-            foreach (var card in cards)
-            {
-                var cardObj = Instantiate(uiCardPrefab, unassignedPool.transform);
-                var uiCard = cardObj.GetComponent<UICard>();
-                uiCard.Initialize(card);
-            }
-
+            // Cards are now instantiated and delivered directly into the unassignedPool by the VisualDealer.
+            // We only need to check the initial validation state to ensure the Ready button is correct.
             OnCardMoved();
         }
 

@@ -9,6 +9,8 @@ namespace CallKitty.UI
     public class UICard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
     {
         public Card CardData { get; private set; }
+        public bool IsFaceUp { get; private set; } = true;
+        public bool IsInteractable { get; set; } = true;
         
         [SerializeField] private Image cardImage; // Set this in inspector if using sprites
         [SerializeField] private Text cardText; // Fallback text representation
@@ -22,23 +24,43 @@ namespace CallKitty.UI
             canvasGroup = GetComponent<CanvasGroup>();
         }
 
-        public void Initialize(Card card)
+        public void Initialize(Card card, bool faceUp = true)
         {
             CardData = card;
+            IsFaceUp = faceUp;
+            
             if (cardText != null)
             {
                 cardText.text = card.ToString();
             }
             
+            UpdateVisual();
+        }
+
+        public void SetFaceUp(bool faceUp)
+        {
+            IsFaceUp = faceUp;
+            UpdateVisual();
+        }
+
+        private void UpdateVisual()
+        {
             // Load from Resources and assign sprite
             CardDatabase db = Resources.Load<CardDatabase>("CardDatabase");
             if (db != null && cardImage != null)
             {
-                Sprite s = db.GetSprite(card);
-                if (s != null)
+                if (IsFaceUp)
                 {
-                    cardImage.sprite = s;
-                    // Optional: hide text if we have a sprite
+                    Sprite s = db.GetSprite(CardData);
+                    if (s != null)
+                    {
+                        cardImage.sprite = s;
+                        if (cardText != null) cardText.gameObject.SetActive(false);
+                    }
+                }
+                else
+                {
+                    cardImage.sprite = db.cardBack;
                     if (cardText != null) cardText.gameObject.SetActive(false);
                 }
             }
@@ -46,6 +68,8 @@ namespace CallKitty.UI
 
         public void OnBeginDrag(PointerEventData eventData)
         {
+            if (!IsInteractable || !IsFaceUp) return;
+
             originalParent = transform.parent;
             originalSiblingIndex = transform.GetSiblingIndex();
 
@@ -59,11 +83,14 @@ namespace CallKitty.UI
 
         public void OnDrag(PointerEventData eventData)
         {
+            if (!IsInteractable || !IsFaceUp) return;
             transform.position = eventData.position;
         }
 
         public void OnEndDrag(PointerEventData eventData)
         {
+            if (!IsInteractable || !IsFaceUp) return;
+
             canvasGroup.blocksRaycasts = true;
             canvasGroup.alpha = 1f;
 
