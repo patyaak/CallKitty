@@ -32,7 +32,13 @@ namespace CallKitty.UI
         private void HandleStateChanged(GameState newState)
         {
             Debug.Log($"[UIManager] HandleStateChanged: {newState}");
-            HideAllPanels();
+            
+            // Only hide all panels if we are NOT entering bidding state.
+            // This allows the cards (arrangementPanel) to stay visible while the bidding panel is shown.
+            if (newState != GameState.Bidding)
+            {
+                HideAllPanels();
+            }
 
             if (arrangementPanel == null) Debug.LogError("[UIManager] arrangementPanel is NOT assigned in the Inspector!");
 

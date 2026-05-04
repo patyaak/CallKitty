@@ -6,7 +6,7 @@ using CallKitty.Core;
 namespace CallKitty.UI
 {
     [RequireComponent(typeof(CanvasGroup))]
-    public class UICard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
+    public class UICard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler
     {
         public Card CardData { get; private set; }
         public bool IsFaceUp { get; private set; } = true;
@@ -15,9 +15,12 @@ namespace CallKitty.UI
         [SerializeField] private Image cardImage; // Set this in inspector if using sprites
         [SerializeField] private Text cardText; // Fallback text representation
         
+        public Transform OriginalParent => originalParent;
+        public int OriginalSiblingIndex => originalSiblingIndex;
+
         private CanvasGroup canvasGroup;
-        private Transform originalParent;
-        private int originalSiblingIndex;
+        public Transform originalParent { get; private set; }
+        public int originalSiblingIndex { get; private set; }
 
         private void Awake()
         {
@@ -94,10 +97,40 @@ namespace CallKitty.UI
             canvasGroup.blocksRaycasts = true;
             canvasGroup.alpha = 1f;
 
-            // If it wasn't dropped on a valid slot, return to original parent
+            // If it wasn't dropped on a valid slot or another card, return to original parent
             if (transform.parent == transform.root)
             {
                 ReturnToOriginalParent();
+            }
+        }
+
+        public void OnDrop(PointerEventData eventData)
+        {
+            if (!IsInteractable) return;
+
+            UICard droppedCard = eventData.pointerDrag?.GetComponent<UICard>();
+            if (droppedCard != null && droppedCard != this)
+            {
+                // We are swapping this card with the droppedCard
+                Transform myParent = transform.parent;
+                int myIndex = transform.GetSiblingIndex();
+
+                Transform otherParent = droppedCard.originalParent;
+                int otherIndex = droppedCard.originalSiblingIndex;
+
+                // Move this card to where they came from
+                transform.SetParent(otherParent);
+                transform.SetSiblingIndex(otherIndex);
+
+                // Move them to where I am
+                droppedCard.transform.SetParent(myParent);
+                droppedCard.transform.SetSiblingIndex(myIndex);
+                
+                // IMPORTANT: Since we parented the dropped card to our slot, 
+                // its OnEndDrag check (parent == root) will now be false, 
+                // and it won't snap back.
+
+                UIArrangementManager.Instance?.OnCardMoved();
             }
         }
 

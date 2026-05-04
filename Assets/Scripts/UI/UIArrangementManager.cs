@@ -42,11 +42,23 @@ namespace CallKitty.UI
 
         public void OnCardMoved()
         {
-            readyButton.interactable = ValidateArrangement();
+            if (GameManager.Instance.CurrentState == GameState.Dealing)
+            {
+                // In dealing state, we just want to proceed to bidding
+                readyButton.interactable = true;
+                readyButton.GetComponentInChildren<Text>().text = "Start Bidding";
+            }
+            else
+            {
+                readyButton.interactable = ValidateArrangement();
+                readyButton.GetComponentInChildren<Text>().text = "Ready";
+            }
         }
 
         private bool ValidateArrangement()
         {
+            if (GameManager.Instance.CurrentState == GameState.Dealing) return true;
+
             if (unassignedPool.transform.childCount > 0) return false;
             
             if (discardZone.transform.childCount != 1) return false;
@@ -61,6 +73,13 @@ namespace CallKitty.UI
 
         private void OnReadyClicked()
         {
+            if (GameManager.Instance.CurrentState == GameState.Dealing)
+            {
+                GameManager.Instance.StartBidding();
+                // Button will be updated/hidden when state changes
+                return;
+            }
+
             if (!ValidateArrangement()) return;
 
             // Extract the arrangement

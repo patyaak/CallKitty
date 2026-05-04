@@ -31,6 +31,8 @@ namespace CallKitty.Gameplay
         public int TargetScore { get; set; } = 5;
         public int CurrentTurnIndex { get; private set; } = 0; // 0 to 3
 
+        private bool isReadyToBid = false;
+
         public event Action<GameState> OnStateChanged;
         public event Action<int, List<HandEvaluatedResult>, Player> OnTurnPlayed; // TurnIndex, Hands, Winner
 
@@ -145,7 +147,16 @@ namespace CallKitty.Gameplay
                 yield return new WaitForSeconds(1f); // Artificial delay for UI
             }
             
+            // Wait for player to be ready to bid (viewed their cards)
+            isReadyToBid = false;
+            yield return new WaitUntil(() => isReadyToBid);
+            
             ChangeState(GameState.Bidding);
+        }
+
+        public void StartBidding()
+        {
+            isReadyToBid = true;
         }
 
         private IEnumerator BiddingRoutine()

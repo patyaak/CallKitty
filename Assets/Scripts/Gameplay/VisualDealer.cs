@@ -27,6 +27,7 @@ namespace CallKitty.Gameplay
         [SerializeField] private float cardMoveDuration = 0.5f; // Time it takes for a card to reach its destination
 
         private List<GameObject> activeCards = new List<GameObject>();
+        private List<GameObject> activeBotCards = new List<GameObject>();
         private List<UICard> playerDealtCards = new List<UICard>();
 
         private void Awake()
@@ -107,6 +108,17 @@ namespace CallKitty.Gameplay
 
             onComplete?.Invoke();
             if (startingCard != null) startingCard.SetActive(false);
+
+            // Hide bot cards once player cards are revealed
+            HideBotCards();
+        }
+
+        private void HideBotCards()
+        {
+            foreach (var card in activeBotCards)
+            {
+                if (card != null) card.SetActive(false);
+            }
         }
 
         private Transform GetPlayerTargetZoneForRound(int round)
@@ -125,6 +137,7 @@ namespace CallKitty.Gameplay
 
             GameObject cardObj = Instantiate(uiCardPrefab, startingPoint.position, startingPoint.rotation, startingPoint.parent);
             activeCards.Add(cardObj);
+            activeBotCards.Add(cardObj);
 
             UICard uiCard = cardObj.GetComponent<UICard>();
             if (uiCard != null)
@@ -239,6 +252,7 @@ namespace CallKitty.Gameplay
                 }
             }
             activeCards.Clear();
+            activeBotCards.Clear();
             
             // Clear cards that were parented to bot zones
             if (botPositions != null)
