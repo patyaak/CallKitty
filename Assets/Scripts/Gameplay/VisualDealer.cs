@@ -20,11 +20,17 @@ namespace CallKitty.Gameplay
         [SerializeField] private Transform[] botPositions = new Transform[3];
         [SerializeField] private Transform[] handZones = new Transform[4];
         [SerializeField] private Transform discardZone;
+        [SerializeField] private GameObject cardBackPrefab;
         public GameObject startingCard;
+        public Transform[] BotPositions => botPositions;
+
+        [Header("Playing Phase")]
+        [SerializeField] private Transform[] playingPositions = new Transform[4]; // 0: Player, 1: Bot1, 2: Bot2, 3: Bot3
 
         [Header("Settings")]
         [SerializeField] private float dealSpeed = 0.1f; // Time between each card deal
         [SerializeField] private float cardMoveDuration = 0.5f; // Time it takes for a card to reach its destination
+        [SerializeField] private float trickShowDuration = 5f; // Time to show the cards in the trick
 
         private List<GameObject> activeCards = new List<GameObject>();
         private List<GameObject> activeBotCards = new List<GameObject>();
@@ -106,8 +112,8 @@ namespace CallKitty.Gameplay
                 }
             }
 
-            onComplete?.Invoke();
             if (startingCard != null) startingCard.SetActive(false);
+            onComplete?.Invoke();
 
             // Hide bot cards once player cards are revealed
             HideBotCards();
@@ -217,6 +223,145 @@ namespace CallKitty.Gameplay
             }
         }
 
+
+        public IEnumerator AnimateAllDiscardsThrow(List<Vector3> startPositions, System.Action onComplete)
+        {
+            int count = startPositions.Count;
+            int finishedCount = 0;
+
+            foreach (var pos in startPositions)
+            {
+                StartCoroutine(AnimateDiscardThrow(pos, () => {
+                    finishedCount++;
+                }));
+            }
+
+            yield return new WaitUntil(() => finishedCount >= count);
+            onComplete?.Invoke();
+        }
+
+        public IEnumerator AnimateDiscardThrow(Vector3 startPosition, System.Action onComplete)
+        {
+            if (cardBackPrefab == null && uiCardPrefab == null) yield break;
+
+            GameObject prefabToUse = cardBackPrefab != null ? cardBackPrefab : uiCardPrefab;
+            
+            // Use startingPoint.parent to ensure it's in the same UI hierarchy as other cards
+            GameObject throwObj = Instantiate(prefabToUse, startPosition, Quaternion.identity, startingPoint.parent);
+            
+            // Ensure it's visible on top of other elements
+            throwObj.transform.SetAsLastSibling();
+            throwObj.transform.localScale = Vector3.one;
+
+            // Standardize size for the throw animation
+            RectTransform rt = throwObj.GetComponent<RectTransform>();
+            if (rt != null)
+            {
+                rt.sizeDelta = new Vector2(212, 298);
+            }
+
+            UnityEngine.UI.Image img = throwObj.GetComponent<UnityEngine.UI.Image>();
+            if (img != null)
+            {
+                img.preserveAspect = true;
+            }
+            
+            // If it's a UICard prefab, make sure it's face down
+            UICard uiCard = throwObj.GetComponent<UICard>();
+            if (uiCard != null)
+            {
+                uiCard.Initialize(new Card(Suit.Spades, Rank.Ace), false);
+                uiCard.IsInteractable = false;
+            }
+
+            Vector3 targetPos = startingPoint.position;
+            // Create a midpoint for an arc effect
+            Vector3 midPoint = (startPosition + targetPos) / 2f + Vector3.up * 200f; // Arc upwards
+            
+            float duration = 0.6f;
+            float elapsed = 0f;
+            
+            Quaternion startRot = throwObj.transform.rotation;
+            Quaternion targetRot = Quaternion.Euler(0, 0, 360f); // Full spin
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / duration;
+                
+                // Ease out cubic for a fast start and slow finish (throwing feel)
+                float tPos = 1f - Mathf.Pow(1f - t, 3f);
+                // Ease in-out sine for rotation
+                float tRot = -(Mathf.Cos(Mathf.PI * t) - 1f) / 2f;
+
+                // Quadratic Bezier for the arc
+                Vector3 m1 = Vector3.Lerp(startPosition, midPoint, tPos);
+                Vector3 m2 = Vector3.Lerp(midPoint, targetPos, tPos);
+                throwObj.transform.position = Vector3.Lerp(m1, m2, tPos);
+
+                throwObj.transform.rotation = Quaternion.Slerp(startRot, targetRot, tRot);
+                
+                // Scale down slightly as it hits the deck
+                throwObj.transform.localScale = Vector3.one * Mathf.Lerp(1f, 0.7f, tPos);
+
+                yield return null;
+            }
+
+            // Snap to final position
+            throwObj.transform.position = targetPos;
+            throwObj.transform.rotation = targetRot;
+            throwObj.transform.localScale = Vector3.one * 0.7f;
+
+            // Wait for 2 seconds as requested
+            yield return new WaitForSeconds(2.0f);
+
+            Destroy(throwObj);
+            onComplete?.Invoke();
+        }
+
+        public IEnumerator ShowTrickAnimation(List<List<Card>> playedHands)
+        {
+            List<GameObject> currentTrickObjects = new List<GameObject>();
+
+            // Instantiate cards for each player
+            for (int i = 0; i < playedHands.Count; i++)
+            {
+                if (i >= playingPositions.Length || playingPositions[i] == null) continue;
+
+                Transform spawnParent = playingPositions[i];
+                List<Card> hand = playedHands[i];
+                if (hand == null) continue;
+
+                for (int c = 0; c < hand.Count; c++)
+                {
+                    GameObject cardObj = Instantiate(uiCardPrefab, spawnParent);
+                    currentTrickObjects.Add(cardObj);
+
+                    UICard uiCard = cardObj.GetComponent<UICard>();
+                    if (uiCard != null)
+                    {
+                        uiCard.Initialize(hand[c], faceUp: true);
+                        uiCard.IsInteractable = false;
+                    }
+
+                    // Spread cards slightly horizontally
+                    RectTransform rt = cardObj.GetComponent<RectTransform>();
+                    if (rt != null)
+                    {
+                        rt.anchoredPosition = new Vector2((c - 1) * 60f, 0); // Spacing of 60
+                    }
+                }
+            }
+
+            // Wait for 5 seconds as requested
+            yield return new WaitForSeconds(trickShowDuration);
+
+            // Destroy the cards after showing
+            foreach (var obj in currentTrickObjects)
+            {
+                if (obj != null) Destroy(obj);
+            }
+        }
 
         private IEnumerator MoveCardSmoothRoutine(Transform cardTransform, Vector3 targetPosition)
         {

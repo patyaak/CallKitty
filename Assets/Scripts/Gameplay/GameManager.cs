@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using CallKitty.Core;
+using CallKitty.UI;
 
 namespace CallKitty.Gameplay
 {
@@ -137,7 +138,10 @@ namespace CallKitty.Gameplay
             if (VisualDealer.Instance != null)
             {
                 bool dealingComplete = false;
-                VisualDealer.Instance.StartDealAnimation(Players[0].DealtCards, () => dealingComplete = true);
+                VisualDealer.Instance.StartDealAnimation(Players[0].DealtCards, () => {
+                    dealingComplete = true;
+                    UIArrangementManager.Instance?.OnCardMoved();
+                });
                 yield return new WaitUntil(() => dealingComplete);
                 // Additional short delay after visual deal
                 yield return new WaitForSeconds(0.5f);
@@ -192,6 +196,28 @@ namespace CallKitty.Gameplay
 
             // Wait for human player to arrange cards
             yield return new WaitUntil(() => AllPlayersReady());
+
+            // Trigger simultaneous discard throw for all players
+            if (VisualDealer.Instance != null)
+            {
+                List<Vector3> startPositions = new List<Vector3>();
+                
+                // Human discard position
+                if (UIArrangementManager.Instance != null)
+                {
+                    startPositions.Add(UIArrangementManager.Instance.DiscardZonePosition);
+                }
+
+                // Bot positions
+                foreach (var botPos in VisualDealer.Instance.BotPositions)
+                {
+                    if (botPos != null) startPositions.Add(botPos.position);
+                }
+
+                bool animationDone = false;
+                StartCoroutine(VisualDealer.Instance.AnimateAllDiscardsThrow(startPositions, () => animationDone = true));
+                yield return new WaitUntil(() => animationDone);
+            }
             
             ResetReadyStates();
             CurrentTurnIndex = 0;
@@ -204,26 +230,35 @@ namespace CallKitty.Gameplay
             
             while (CurrentTurnIndex < 4)
             {
-                List<HandEvaluatedResult> playedHands = new List<HandEvaluatedResult>();
+                List<HandEvaluatedResult> evaluatedHands = new List<HandEvaluatedResult>();
+                List<List<Core.Card>> rawHands = new List<List<Core.Card>>();
                 List<Player> activePlayers = new List<Player>();
 
                 // Collect hands for this turn
-                foreach (var player in Players)
+                for (int i = 0; i < Players.Count; i++)
                 {
-                    var hand = player.GetHandForTurn(CurrentTurnIndex);
+                    var hand = Players[i].GetHandForTurn(CurrentTurnIndex);
+                    rawHands.Add(hand); // Can be null, VisualDealer handles it
+                    
                     if (hand != null)
                     {
                         var eval = HandEvaluator.Evaluate3CardHand(hand);
-                        playedHands.Add(eval);
-                        activePlayers.Add(player);
+                        evaluatedHands.Add(eval);
+                        activePlayers.Add(Players[i]);
                     }
+                }
+
+                // Show visual animation of the trick
+                if (VisualDealer.Instance != null)
+                {
+                    yield return StartCoroutine(VisualDealer.Instance.ShowTrickAnimation(rawHands));
                 }
 
                 // Determine winner
                 int winnerIndex = 0;
-                for (int i = 1; i < playedHands.Count; i++)
+                for (int i = 1; i < evaluatedHands.Count; i++)
                 {
-                    if (playedHands[i].CompareTo(playedHands[winnerIndex]) > 0)
+                    if (evaluatedHands[i].CompareTo(evaluatedHands[winnerIndex]) > 0)
                     {
                         winnerIndex = i;
                     }
@@ -232,13 +267,10 @@ namespace CallKitty.Gameplay
                 Player turnWinner = activePlayers[winnerIndex];
                 turnWinner.HandsWonThisRound++;
                 
-                Debug.Log($"Turn {CurrentTurnIndex + 1} Winner: {turnWinner.PlayerName} with {playedHands[winnerIndex].Rank}");
+                Debug.Log($"Turn {CurrentTurnIndex + 1} Winner: {turnWinner.PlayerName} with {evaluatedHands[winnerIndex].Rank}");
 
                 // Invoke event for UI
-                OnTurnPlayed?.Invoke(CurrentTurnIndex, playedHands, turnWinner);
-
-                // Wait a bit so UI can show the trick
-                yield return new WaitForSeconds(3f); // Increased delay for better UX
+                OnTurnPlayed?.Invoke(CurrentTurnIndex, evaluatedHands, turnWinner);
 
                 CurrentTurnIndex++;
             }

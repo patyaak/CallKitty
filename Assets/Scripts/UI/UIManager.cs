@@ -5,11 +5,19 @@ namespace CallKitty.UI
 {
     public class UIManager : MonoBehaviour
     {
+        public static UIManager Instance { get; private set; }
+
         [Header("Panels")]
         [SerializeField] private GameObject biddingPanel;
         [SerializeField] private GameObject arrangementPanel;
         [SerializeField] private GameObject gameplayPanel;
         [SerializeField] private GameObject scoreboardPanel;
+
+        private void Awake()
+        {
+            if (Instance == null) Instance = this;
+            else Destroy(gameObject);
+        }
 
         private void Start()
         {
@@ -48,7 +56,7 @@ namespace CallKitty.UI
                     if (arrangementPanel) arrangementPanel.SetActive(true);
                     break;
                 case GameState.Bidding:
-                    if (biddingPanel) biddingPanel.SetActive(true);
+                    // if (biddingPanel) biddingPanel.SetActive(true);
                     break;
                 case GameState.Arranging:
                     if (arrangementPanel) arrangementPanel.SetActive(true);
@@ -66,6 +74,11 @@ namespace CallKitty.UI
                     scoreboardPanel.SetActive(true);
                     break;
             }
+        }
+
+        public void ShowBiddingPanel(bool show)
+        {
+            if (biddingPanel) biddingPanel.SetActive(show);
         }
 
         private void HideAllPanels()

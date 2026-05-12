@@ -11,7 +11,7 @@ namespace CallKitty.Gameplay
         {
             // Basic AI: Greedy search for strong hands
             List<Card> tempCards = new List<Card>(DealtCards);
-            int estimatedWins = 0;
+            float totalScore = 0f;
 
             for (int i = 0; i < 4; i++)
             {
@@ -19,11 +19,23 @@ namespace CallKitty.Gameplay
                 if (bestHand != null && bestHand.Count == 3)
                 {
                     var eval = HandEvaluator.Evaluate3CardHand(bestHand);
-                    // Consider Pair of 10s or better, or any Sequence/Flush/Trail as a "potential win"
-                    if (eval.Rank >= HandRank.Color || 
-                       (eval.Rank == HandRank.Pair && eval.SortedCards[0].Rank >= Rank.Ten))
+                    
+                    // Assign probabilities of winning for each hand type
+                    switch(eval.Rank)
                     {
-                        estimatedWins++;
+                        case HandRank.Trail: totalScore += 1.0f; break;
+                        case HandRank.PureSequence: totalScore += 0.9f; break;
+                        case HandRank.Sequence: totalScore += 0.7f; break;
+                        case HandRank.Color: totalScore += 0.5f; break;
+                        case HandRank.Pair:
+                            if (eval.SortedCards[0].Rank >= Rank.Ace) totalScore += 0.4f;
+                            else if (eval.SortedCards[0].Rank >= Rank.Jack) totalScore += 0.3f;
+                            else if (eval.SortedCards[0].Rank >= Rank.Eight) totalScore += 0.15f;
+                            else totalScore += 0.05f;
+                            break;
+                        default: // High Card
+                            if (eval.SortedCards[0].Rank >= Rank.Ace) totalScore += 0.1f;
+                            break;
                     }
 
                     // Remove these cards to evaluate the rest
@@ -34,9 +46,12 @@ namespace CallKitty.Gameplay
                 }
             }
 
-            // Cap the call to 4 (max hands)
-            CurrentCall = Mathf.Clamp(estimatedWins, 0, 4);
-            Debug.Log($"AI {PlayerName} called {CurrentCall}");
+            // Round the total score to get the bid, clamping between 1 and 4
+            // (In most variations, AI bids at least 1)
+            CurrentCall = Mathf.RoundToInt(totalScore);
+            CurrentCall = Mathf.Clamp(CurrentCall, 1, 4); 
+            
+            Debug.Log($"AI {PlayerName} called {CurrentCall} (Calculated Score: {totalScore:F2})");
             IsReady = true;
         }
 

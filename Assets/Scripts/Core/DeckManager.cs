@@ -22,6 +22,7 @@ namespace CallKitty.Core
             }
         }
 
+//fisher-yates algorithm
         public void ShuffleDeck()
         {
             int n = _deck.Count;

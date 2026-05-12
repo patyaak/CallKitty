@@ -50,12 +50,10 @@ namespace CallKitty.Core
             if (isA23)
             {
                 isSequence = true;
-                // Re-sort for tie-breaker: 3, 2, A (Ace is low here, but in some rules A-2-3 is highest sequence. 
-                // Standard 3-card brag/poker A-K-Q is highest, A-2-3 is second highest or lowest sequence. 
-                // Let's treat A-K-Q as highest, then Q-J-10. Wait, standard rules: A-2-3 is often considered a valid straight.
-                // We'll treat A-2-3 as lower than 2-3-4 unless specific rules apply. Usually A is just 14. 
-                // Let's stick to A=14, so A,2,3 is a valid straight where 3 is the high card.
-                sortedCards = new List<Card> { sortedCards[1], sortedCards[2], sortedCards[0] }; 
+                // Re-sort for tie-breaker: A, 3, 2
+                // This makes A-2-3 the second strongest sequence after A-K-Q 
+                // (Comparison: A-K-Q is 14,13,12 vs A-2-3 is 14,3,2. First card ties, second card 13 beats 3).
+                sortedCards = new List<Card> { sortedCards[0], sortedCards[1], sortedCards[2] }; 
             }
             else
             {
