@@ -9,50 +9,64 @@ namespace CallKitty.Gameplay
     {
         public void PerformBidding()
         {
-            // Basic AI: Greedy search for strong hands
-            List<Card> tempCards = new List<Card>(DealtCards);
             float totalScore = 0f;
+            List<List<Card>> handsToEvaluate = GetHandsForBidding();
+
+            foreach (var hand in handsToEvaluate)
+            {
+                var eval = HandEvaluator.Evaluate3CardHand(hand);
+                totalScore += EstimateWinValue(eval);
+            }
+
+            // Round the estimated wins to get the bid, allowing Nil calls.
+            CurrentCall = Mathf.RoundToInt(totalScore);
+            CurrentCall = Mathf.Clamp(CurrentCall, 0, 4);
+
+            Debug.Log($"AI {PlayerName} called {CurrentCall} (Calculated Score: {totalScore:F2})");
+        }
+
+        private List<List<Card>> GetHandsForBidding()
+        {
+            if (ArrangedHands.Count == 4)
+            {
+                return ArrangedHands;
+            }
+
+            List<Card> tempCards = new List<Card>(DealtCards);
+            List<List<Card>> hands = new List<List<Card>>();
 
             for (int i = 0; i < 4; i++)
             {
                 var bestHand = FindBestHand(tempCards);
-                if (bestHand != null && bestHand.Count == 3)
-                {
-                    var eval = HandEvaluator.Evaluate3CardHand(bestHand);
-                    
-                    // Assign probabilities of winning for each hand type
-                    switch(eval.Rank)
-                    {
-                        case HandRank.Trail: totalScore += 1.0f; break;
-                        case HandRank.PureSequence: totalScore += 0.9f; break;
-                        case HandRank.Sequence: totalScore += 0.7f; break;
-                        case HandRank.Color: totalScore += 0.5f; break;
-                        case HandRank.Pair:
-                            if (eval.SortedCards[0].Rank >= Rank.Ace) totalScore += 0.4f;
-                            else if (eval.SortedCards[0].Rank >= Rank.Jack) totalScore += 0.3f;
-                            else if (eval.SortedCards[0].Rank >= Rank.Eight) totalScore += 0.15f;
-                            else totalScore += 0.05f;
-                            break;
-                        default: // High Card
-                            if (eval.SortedCards[0].Rank >= Rank.Ace) totalScore += 0.1f;
-                            break;
-                    }
+                if (bestHand == null) break;
 
-                    // Remove these cards to evaluate the rest
-                    foreach (var card in bestHand)
-                    {
-                        tempCards.Remove(card);
-                    }
+                hands.Add(bestHand);
+                foreach (var card in bestHand)
+                {
+                    tempCards.Remove(card);
                 }
             }
 
-            // Round the total score to get the bid, clamping between 1 and 4
-            // (In most variations, AI bids at least 1)
-            CurrentCall = Mathf.RoundToInt(totalScore);
-            CurrentCall = Mathf.Clamp(CurrentCall, 1, 4); 
-            
-            Debug.Log($"AI {PlayerName} called {CurrentCall} (Calculated Score: {totalScore:F2})");
-            IsReady = true;
+            return hands;
+        }
+
+        private float EstimateWinValue(HandEvaluatedResult eval)
+        {
+            switch(eval.Rank)
+            {
+                case HandRank.Trail: return 1.0f;
+                case HandRank.PureSequence: return 0.9f;
+                case HandRank.Sequence: return 0.7f;
+                case HandRank.Color: return 0.5f;
+                case HandRank.Pair:
+                    if (eval.SortedCards[0].Rank >= Rank.Ace) return 0.4f;
+                    if (eval.SortedCards[0].Rank >= Rank.Jack) return 0.3f;
+                    if (eval.SortedCards[0].Rank >= Rank.Eight) return 0.15f;
+                    return 0.05f;
+                default:
+                    if (eval.SortedCards[0].Rank >= Rank.Ace) return 0.1f;
+                    return 0f;
+            }
         }
 
         public void PerformArrangement()

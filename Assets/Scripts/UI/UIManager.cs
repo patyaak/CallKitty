@@ -56,7 +56,7 @@ namespace CallKitty.UI
                     if (arrangementPanel) arrangementPanel.SetActive(true);
                     break;
                 case GameState.Bidding:
-                    // if (biddingPanel) biddingPanel.SetActive(true);
+                    if (biddingPanel) biddingPanel.SetActive(true);
                     break;
                 case GameState.Arranging:
                     if (arrangementPanel) arrangementPanel.SetActive(true);

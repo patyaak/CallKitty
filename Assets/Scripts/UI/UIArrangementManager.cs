@@ -162,23 +162,21 @@ namespace CallKitty.UI
 
         public void OnCardMoved()
         {
-            if (GameManager.Instance.CurrentState == GameState.Dealing)
+            if (GameManager.Instance.CurrentState == GameState.Arranging)
             {
-                // In dealing state, show the button to proceed
                 readyButton.gameObject.SetActive(true);
-                readyButton.interactable = true;
-               // readyButton.GetComponentInChildren<Text>().text = "Start Bidding";
+                readyButton.interactable = ValidateArrangement();
             }
             else
             {
-                readyButton.interactable = ValidateArrangement();
-               // readyButton.GetComponentInChildren<Text>().text = "Ready";
+                readyButton.gameObject.SetActive(false);
+                readyButton.interactable = false;
             }
         }
 
         private bool ValidateArrangement()
         {
-            if (GameManager.Instance.CurrentState == GameState.Dealing) return true;
+            if (GameManager.Instance.CurrentState != GameState.Arranging) return false;
 
             if (unassignedPool.transform.childCount > 0) return false;
             
@@ -194,24 +192,7 @@ namespace CallKitty.UI
 
         private void OnReadyClicked()
         {
-            if (GameManager.Instance.CurrentState == GameState.Dealing)
-            {
-                // Hide button immediately
-                readyButton.gameObject.SetActive(false);
-
-                // Handle discard animation
-                if (discardZone.transform.childCount > 0)
-                {
-                    discardZone.transform.GetChild(0).gameObject.SetActive(false);
-                }
-
-                // Trigger the bidding panel instead of throw
-                UIManager.Instance?.ShowBiddingPanel(true);
-                // GameManager.Instance.StartBidding();
-                // Button will be updated/hidden when state changes
-                return;
-            }
-
+            if (GameManager.Instance.CurrentState != GameState.Arranging) return;
             if (!ValidateArrangement()) return;
 
             StartCoroutine(FinishArrangementRoutine());
@@ -221,12 +202,8 @@ namespace CallKitty.UI
         {
             // Disable button to prevent multiple clicks
             readyButton.interactable = false;
-
-            // Handle discard animation (Hiding the card immediately, animation is handled by GameManager)
-            if (discardZone.transform.childCount > 0)
-            {
-                discardZone.transform.GetChild(0).gameObject.SetActive(false);
-            }
+            readyButton.gameObject.SetActive(false);
+            SetAllCardsInteractable(false);
 
             // Extract the arrangement
             List<List<Card>> arrangedHands = new List<List<Card>>();
@@ -246,9 +223,15 @@ namespace CallKitty.UI
             Player humanPlayer = GameManager.Instance.Players[0];
             humanPlayer.SetArrangement(arrangedHands, discard);
 
-            // Hide this UI (GameManager will handle state change when all are ready)
-            gameObject.SetActive(false);
             yield break;
+        }
+
+        public void HideDiscardCard()
+        {
+            if (discardZone != null && discardZone.transform.childCount > 0)
+            {
+                discardZone.transform.GetChild(0).gameObject.SetActive(false);
+            }
         }
     }
 }

@@ -32,8 +32,6 @@ namespace CallKitty.Gameplay
         public int TargetScore { get; set; } = 5;
         public int CurrentTurnIndex { get; private set; } = 0; // 0 to 3
 
-        private bool isReadyToBid = false;
-
         public event Action<GameState> OnStateChanged;
         public event Action<int, List<HandEvaluatedResult>, Player> OnTurnPlayed; // TurnIndex, Hands, Winner
 
@@ -150,36 +148,26 @@ namespace CallKitty.Gameplay
             {
                 yield return new WaitForSeconds(1f); // Artificial delay for UI
             }
-            
-            // Wait for player to be ready to bid (viewed their cards)
-            isReadyToBid = false;
-            yield return new WaitUntil(() => isReadyToBid);
-            
-            ChangeState(GameState.Bidding);
+            ChangeState(GameState.Arranging);
         }
 
-        public void StartBidding()
+        public void CompleteBidding()
         {
-            isReadyToBid = true;
+            foreach (var player in Players)
+            {
+                player.IsReady = true;
+            }
         }
 
         private IEnumerator BiddingRoutine()
         {
             Debug.Log("Bidding Phase...");
-            // AI performs bidding automatically
-            foreach (var player in Players)
-            {
-                if (player.IsAI)
-                {
-                    ((PlayerAI)player).PerformBidding();
-                }
-            }
-
-            // Wait for human player to bid (IsReady = true)
+            // Wait for the bidding UI to collect the human call, bot calls, and discard animation.
             yield return new WaitUntil(() => AllPlayersReady());
 
             ResetReadyStates();
-            ChangeState(GameState.Arranging);
+            CurrentTurnIndex = 0;
+            ChangeState(GameState.PlayingRound);
         }
 
         private IEnumerator ArrangingRoutine()
@@ -197,31 +185,8 @@ namespace CallKitty.Gameplay
             // Wait for human player to arrange cards
             yield return new WaitUntil(() => AllPlayersReady());
 
-            // Trigger simultaneous discard throw for all players
-            if (VisualDealer.Instance != null)
-            {
-                List<Vector3> startPositions = new List<Vector3>();
-                
-                // Human discard position
-                if (UIArrangementManager.Instance != null)
-                {
-                    startPositions.Add(UIArrangementManager.Instance.DiscardZonePosition);
-                }
-
-                // Bot positions
-                foreach (var botPos in VisualDealer.Instance.BotPositions)
-                {
-                    if (botPos != null) startPositions.Add(botPos.position);
-                }
-
-                bool animationDone = false;
-                StartCoroutine(VisualDealer.Instance.AnimateAllDiscardsThrow(startPositions, () => animationDone = true));
-                yield return new WaitUntil(() => animationDone);
-            }
-            
             ResetReadyStates();
-            CurrentTurnIndex = 0;
-            ChangeState(GameState.PlayingRound);
+            ChangeState(GameState.Bidding);
         }
 
         private IEnumerator PlayingRoundRoutine()

@@ -26,6 +26,8 @@ namespace CallKitty.Gameplay
 
         [Header("Playing Phase")]
         [SerializeField] private Transform[] playingPositions = new Transform[4]; // 0: Player, 1: Bot1, 2: Bot2, 3: Bot3
+        [SerializeField] private Vector2 playedCardSize = new Vector2(115f, 162f);
+        [SerializeField] private float playedCardSpacing = 122f;
 
         [Header("Settings")]
         [SerializeField] private float dealSpeed = 0.1f; // Time between each card deal
@@ -321,12 +323,22 @@ namespace CallKitty.Gameplay
 
         public IEnumerator ShowTrickAnimation(List<List<Card>> playedHands)
         {
+            if (uiCardPrefab == null)
+            {
+                Debug.LogError("[VisualDealer] Cannot show trick because UI Card Prefab is not assigned.");
+                yield break;
+            }
+
             List<GameObject> currentTrickObjects = new List<GameObject>();
 
             // Instantiate cards for each player
             for (int i = 0; i < playedHands.Count; i++)
             {
-                if (i >= playingPositions.Length || playingPositions[i] == null) continue;
+                if (i >= playingPositions.Length || playingPositions[i] == null)
+                {
+                    Debug.LogWarning($"[VisualDealer] Playing position {i} is not assigned.");
+                    continue;
+                }
 
                 Transform spawnParent = playingPositions[i];
                 List<Card> hand = playedHands[i];
@@ -348,7 +360,13 @@ namespace CallKitty.Gameplay
                     RectTransform rt = cardObj.GetComponent<RectTransform>();
                     if (rt != null)
                     {
-                        rt.anchoredPosition = new Vector2((c - 1) * 60f, 0); // Spacing of 60
+                        rt.anchorMin = new Vector2(0.5f, 0.5f);
+                        rt.anchorMax = new Vector2(0.5f, 0.5f);
+                        rt.pivot = new Vector2(0.5f, 0.5f);
+                        rt.sizeDelta = playedCardSize;
+                        rt.anchoredPosition = new Vector2((c - 1) * playedCardSpacing, 0);
+                        rt.localScale = Vector3.one;
+                        rt.localRotation = Quaternion.identity;
                     }
                 }
             }

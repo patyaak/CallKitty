@@ -47,9 +47,17 @@ namespace CallKitty.UI
 
         private void OnOkButtonClicked()
         {
+            if (selectedBid < 0) return;
+
+            if (okButton != null) okButton.interactable = false;
+            foreach (var btn in callButtons)
+            {
+                if (btn != null) btn.interactable = false;
+            }
+
             // Start the routine on the GameManager so it continues even if this panel is deactivated
             GameManager.Instance.StartCoroutine(ConfirmBiddingRoutine());
-            gameObject.SetActive(false); // Hide the selection panel immediately
+            gameObject.SetActive(false);
         }
 
         private IEnumerator ConfirmBiddingRoutine()
@@ -60,7 +68,6 @@ namespace CallKitty.UI
             // 1. Update Human Bid
             Player humanPlayer = GameManager.Instance.Players[0];
             humanPlayer.CurrentCall = selectedBid;
-            humanPlayer.IsReady = true;
             
             // Show all winValue panels (bid displays)
             if (winValuePanels.Length > 0 && winValuePanels[0] != null) winValuePanels[0].SetActive(true);
@@ -85,6 +92,8 @@ namespace CallKitty.UI
             }
 
             // 3. Trigger Card Throw Animation
+            UIArrangementManager.Instance?.HideDiscardCard();
+
             if (VisualDealer.Instance != null)
             {
                 List<Vector3> startPositions = new List<Vector3>();
@@ -107,7 +116,7 @@ namespace CallKitty.UI
             }
 
             // 4. Transition State
-            GameManager.Instance.StartBidding();
+            GameManager.Instance.CompleteBidding();
         }
 
         private void OnEnable()
