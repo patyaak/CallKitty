@@ -22,6 +22,13 @@ namespace CallKitty.UI
         [SerializeField] private Button arrangeButton;
         [SerializeField] private GameObject uiCardPrefab;
 
+        private class RankedUIHand
+        {
+            public int OriginalIndex;
+            public List<UICard> Cards;
+            public HandEvaluatedResult Evaluation;
+        }
+
         private void Awake()
         {
             if (Instance == null) Instance = this;
@@ -33,107 +40,58 @@ namespace CallKitty.UI
 
         private void OnArrangeClicked()
         {
-            List<UICard> allUICards = new List<UICard>();
-            
-            // 1. Collect all 13 cards from all possible slots
-            // Pool
-            foreach (Transform child in unassignedPool.transform)
+            if (!ValidateArrangement())
             {
-                var card = child.GetComponent<UICard>();
-                if (card != null) allUICards.Add(card);
-            }
-            // Zones
-            foreach (var zone in handZones)
-            {
-                foreach (Transform child in zone.transform)
-                {
-                    var card = child.GetComponent<UICard>();
-                    if (card != null) allUICards.Add(card);
-                }
-            }
-            // Discard
-            foreach (Transform child in discardZone.transform)
-            {
-                var card = child.GetComponent<UICard>();
-                if (card != null) allUICards.Add(card);
-            }
-
-            // Safety check: ensure we have the full hand
-            if (allUICards.Count < 13)
-            {
-                Debug.LogWarning($"[UIArrangementManager] Only found {allUICards.Count} cards. Need 13 to auto-arrange.");
+                Debug.LogWarning("[UIArrangementManager] Arrange ranking needs 4 complete hands and 1 discard card.");
                 return;
             }
 
-            // 2. Greedy algorithm to find 4 best hands sequentially
-            List<UICard> tempUICards = new List<UICard>(allUICards);
-            List<List<UICard>> bestUIHands = new List<List<UICard>>();
+            List<RankedUIHand> rankedHands = new List<RankedUIHand>();
 
-            for (int h = 0; h < 4; h++)
+            for (int i = 0; i < handZones.Length; i++)
             {
-                List<UICard> bestHand = FindBestUIHand(tempUICards);
-                if (bestHand != null)
+                List<UICard> uiCards = new List<UICard>();
+                List<Card> cards = new List<Card>();
+
+                foreach (Transform child in handZones[i].transform)
                 {
-                    bestUIHands.Add(bestHand);
-                    foreach (var card in bestHand) tempUICards.Remove(card);
+                    UICard uiCard = child.GetComponent<UICard>();
+                    if (uiCard == null) continue;
+
+                    uiCards.Add(uiCard);
+                    cards.Add(uiCard.CardData);
                 }
+
+                rankedHands.Add(new RankedUIHand
+                {
+                    OriginalIndex = i,
+                    Cards = uiCards,
+                    Evaluation = HandEvaluator.Evaluate3CardHand(cards)
+                });
             }
 
-            // 3. The remaining card goes to the discard zone
-            UICard discardUICard = tempUICards[0];
-
-            // 4. Update UI parenting and positions
-            // Hand Zones (Priority 1 to 4)
-            for (int h = 0; h < 4; h++)
+            rankedHands.Sort((left, right) =>
             {
-                if (h < bestUIHands.Count)
+                int rankComparison = right.Evaluation.CompareTo(left.Evaluation);
+                if (rankComparison != 0) return rankComparison;
+
+                return left.OriginalIndex.CompareTo(right.OriginalIndex);
+            });
+
+            for (int handIndex = 0; handIndex < rankedHands.Count; handIndex++)
+            {
+                List<UICard> uiCards = rankedHands[handIndex].Cards;
+                for (int cardIndex = 0; cardIndex < uiCards.Count; cardIndex++)
                 {
-                    foreach (var uiCard in bestUIHands[h])
-                    {
-                        uiCard.transform.SetParent(handZones[h].transform, false);
-                        uiCard.transform.localPosition = Vector3.zero; // Reset position in case of drag residue
-                    }
+                    UICard uiCard = uiCards[cardIndex];
+                    uiCard.transform.SetParent(handZones[handIndex].transform, false);
+                    uiCard.transform.SetSiblingIndex(cardIndex);
+                    uiCard.transform.localPosition = Vector3.zero;
                 }
             }
-            // Discard Zone
-            discardUICard.transform.SetParent(discardZone.transform, false);
-            discardUICard.transform.localPosition = Vector3.zero;
 
             OnCardMoved(); // Update Ready button state
-            Debug.Log("[UIArrangementManager] Auto-arranged cards into 4 sets + 1 discard.");
-        }
-
-        private List<UICard> FindBestUIHand(List<UICard> availableUICards)
-        {
-            if (availableUICards.Count < 3) return null;
-
-            List<UICard> bestHand = null;
-            HandEvaluatedResult bestEval = null;
-
-            int n = availableUICards.Count;
-            // Brute force search for the best 3-card combination (N choose 3)
-            for (int i = 0; i < n - 2; i++)
-            {
-                for (int j = i + 1; j < n - 1; j++)
-                {
-                    for (int k = j + 1; k < n; k++)
-                    {
-                        var cards = new List<Card> { 
-                            availableUICards[i].CardData, 
-                            availableUICards[j].CardData, 
-                            availableUICards[k].CardData 
-                        };
-                        var eval = HandEvaluator.Evaluate3CardHand(cards);
-
-                        if (bestEval == null || eval.CompareTo(bestEval) > 0)
-                        {
-                            bestEval = eval;
-                            bestHand = new List<UICard> { availableUICards[i], availableUICards[j], availableUICards[k] };
-                        }
-                    }
-                }
-            }
-            return bestHand;
+            Debug.Log("[UIArrangementManager] Ranked existing hands from strongest to weakest.");
         }
 
         private void OnEnable()

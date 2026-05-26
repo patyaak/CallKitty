@@ -34,6 +34,7 @@ namespace CallKitty.Gameplay
 
         public event Action<GameState> OnStateChanged;
         public event Action<int, List<HandEvaluatedResult>, Player> OnTurnPlayed; // TurnIndex, Hands, Winner
+        private int stateChangeVersion = 0;
 
         private void Awake()
         {
@@ -91,6 +92,7 @@ namespace CallKitty.Gameplay
         public void ChangeState(GameState newState)
         {
             CurrentState = newState;
+            int changeVersion = ++stateChangeVersion;
             OnStateChanged?.Invoke(newState);
 
             switch (newState)
@@ -99,7 +101,7 @@ namespace CallKitty.Gameplay
                     StartCoroutine(DealRoutine());
                     break;
                 case GameState.Bidding:
-                    StartCoroutine(BiddingRoutine());
+                    StartCoroutine(BiddingRoutine(changeVersion));
                     break;
                 case GameState.Arranging:
                     StartCoroutine(ArrangingRoutine());
@@ -159,11 +161,20 @@ namespace CallKitty.Gameplay
             }
         }
 
-        private IEnumerator BiddingRoutine()
+        public void ReturnToArrangingFromBidding()
+        {
+            if (CurrentState != GameState.Bidding) return;
+
+            ResetReadyStates();
+            ChangeState(GameState.Arranging);
+        }
+
+        private IEnumerator BiddingRoutine(int changeVersion)
         {
             Debug.Log("Bidding Phase...");
             // Wait for the bidding UI to collect the human call, bot calls, and discard animation.
-            yield return new WaitUntil(() => AllPlayersReady());
+            yield return new WaitUntil(() => changeVersion != stateChangeVersion || AllPlayersReady());
+            if (changeVersion != stateChangeVersion || CurrentState != GameState.Bidding) yield break;
 
             ResetReadyStates();
             CurrentTurnIndex = 0;

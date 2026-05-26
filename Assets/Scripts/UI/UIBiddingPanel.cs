@@ -10,6 +10,7 @@ namespace CallKitty.UI
     {
         [SerializeField] private Button[] callButtons; // Index 0-4
         [SerializeField] private Button okButton;
+        [SerializeField] private Button closeButton;
         [SerializeField] private TMPro.TextMeshProUGUI[] playerBidTexts; // 0: Player, 1-3: Bots
         [SerializeField] private GameObject[] winValuePanels; // 0: Player, 1-3: Bots
 
@@ -27,6 +28,11 @@ namespace CallKitty.UI
             {
                 okButton.onClick.AddListener(OnOkButtonClicked);
                 okButton.interactable = false; // Disable until a bid is selected
+            }
+
+            if (closeButton != null)
+            {
+                closeButton.onClick.AddListener(OnCloseButtonClicked);
             }
         }
 
@@ -58,6 +64,18 @@ namespace CallKitty.UI
             // Start the routine on the GameManager so it continues even if this panel is deactivated
             GameManager.Instance.StartCoroutine(ConfirmBiddingRoutine());
             gameObject.SetActive(false);
+        }
+
+        private void OnCloseButtonClicked()
+        {
+            if (GameManager.Instance != null && GameManager.Instance.CurrentState == GameState.Bidding)
+            {
+                GameManager.Instance.ReturnToArrangingFromBidding();
+            }
+            else
+            {
+                gameObject.SetActive(false);
+            }
         }
 
         private IEnumerator ConfirmBiddingRoutine()
