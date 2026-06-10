@@ -46,6 +46,12 @@ namespace CallKitty.UI
                 return;
             }
 
+            // Disable arrange button permanently to prevent multiple clicks
+            if (arrangeButton != null)
+            {
+                arrangeButton.interactable = false;
+            }
+
             List<RankedUIHand> rankedHands = new List<RankedUIHand>();
 
             for (int i = 0; i < handZones.Length; i++)
@@ -90,15 +96,19 @@ namespace CallKitty.UI
                 }
             }
 
-            OnCardMoved(); // Update Ready button state
             Debug.Log("[UIArrangementManager] Ranked existing hands from strongest to weakest.");
         }
 
         private void OnEnable()
         {
-            // Disable button initially until cards are properly dealt
+            // Disable buttons initially until cards are properly dealt
             readyButton.gameObject.SetActive(false);
             readyButton.interactable = false;
+            if (arrangeButton != null)
+            {
+                arrangeButton.gameObject.SetActive(false);
+                arrangeButton.interactable = false;
+            }
         }
 
         public void PopulateCards(List<Card> cards)
@@ -124,11 +134,24 @@ namespace CallKitty.UI
             {
                 readyButton.gameObject.SetActive(true);
                 readyButton.interactable = ValidateArrangement();
+                
+                // Also activate arrange button when cards are dealt
+                if (arrangeButton != null)
+                {
+                    arrangeButton.gameObject.SetActive(true);
+                    arrangeButton.interactable = ValidateArrangement();
+                }
             }
             else
             {
                 readyButton.gameObject.SetActive(false);
                 readyButton.interactable = false;
+                
+                if (arrangeButton != null)
+                {
+                    arrangeButton.gameObject.SetActive(false);
+                    arrangeButton.interactable = false;
+                }
             }
         }
 
@@ -158,9 +181,14 @@ namespace CallKitty.UI
 
         private IEnumerator FinishArrangementRoutine()
         {
-            // Disable button to prevent multiple clicks
+            // Disable buttons to prevent multiple clicks
             readyButton.interactable = false;
             readyButton.gameObject.SetActive(false);
+            if (arrangeButton != null)
+            {
+                arrangeButton.interactable = false;
+                arrangeButton.gameObject.SetActive(false);
+            }
             SetAllCardsInteractable(false);
 
             // Extract the arrangement
