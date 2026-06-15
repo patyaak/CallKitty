@@ -90,9 +90,8 @@ namespace CallKitty.UI
                 for (int cardIndex = 0; cardIndex < uiCards.Count; cardIndex++)
                 {
                     UICard uiCard = uiCards[cardIndex];
-                    uiCard.transform.SetParent(handZones[handIndex].transform, false);
+                    uiCard.transform.SetParent(handZones[handIndex].transform, true);
                     uiCard.transform.SetSiblingIndex(cardIndex);
-                    uiCard.transform.localPosition = Vector3.zero;
                 }
             }
 
