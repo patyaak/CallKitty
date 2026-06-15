@@ -38,6 +38,22 @@ namespace CallKitty.UI
             if (arrangeButton != null) arrangeButton.onClick.AddListener(OnArrangeClicked);
         }
 
+        private void Start()
+        {
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.OnTurnStarted += SetActiveHandZone;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.OnTurnStarted -= SetActiveHandZone;
+            }
+        }
+
         private void OnArrangeClicked()
         {
             if (!ValidateArrangement())
@@ -216,6 +232,133 @@ namespace CallKitty.UI
             if (discardZone != null && discardZone.transform.childCount > 0)
             {
                 discardZone.transform.GetChild(0).gameObject.SetActive(false);
+            }
+        }
+
+        // Called when entering gameplay to prepare the UI for turn-based play
+        public void EnterGameplayMode()
+        {
+            // Hide arrangement buttons
+            readyButton.gameObject.SetActive(false);
+            readyButton.interactable = false;
+            
+            if (arrangeButton != null)
+            {
+                arrangeButton.gameObject.SetActive(false);
+                arrangeButton.interactable = false;
+            }
+
+            // Hide discard zone during gameplay
+            if (discardZone != null)
+            {
+                discardZone.gameObject.SetActive(false);
+            }
+
+            // Make cards non-draggable during gameplay
+            SetAllCardsInteractable(false);
+
+            // Initially disable all hand zones
+            for (int i = 0; i < handZones.Length; i++)
+            {
+                SetHandZoneInteractable(i, false);
+                SetHandZoneHighlight(i, false);
+            }
+        }
+
+        // Highlight and enable the current turn's hand zone
+        public void SetActiveHandZone(int turnIndex)
+        {
+            if (turnIndex < 0 || turnIndex >= handZones.Length)
+            {
+                Debug.LogWarning($"[UIArrangementManager] Invalid turn index: {turnIndex}");
+                return;
+            }
+
+            // Disable all hand zones first
+            for (int i = 0; i < handZones.Length; i++)
+            {
+                SetHandZoneInteractable(i, false);
+                SetHandZoneHighlight(i, false);
+            }
+
+            // Enable and highlight the current turn's hand zone
+            SetHandZoneInteractable(turnIndex, true);
+            SetHandZoneHighlight(turnIndex, true);
+
+            Debug.Log($"[UIArrangementManager] Active hand zone set to Turn {turnIndex + 1}");
+        }
+
+        public void HideHandZoneCards(int zoneIndex)
+        {
+            if (zoneIndex < 0 || zoneIndex >= handZones.Length) return;
+
+            foreach (Transform child in handZones[zoneIndex].transform)
+            {
+                child.gameObject.SetActive(false);
+            }
+            SetHandZoneHighlight(zoneIndex, false);
+        }
+
+        // Enable/disable interaction for a specific hand zone
+        private void SetHandZoneInteractable(int zoneIndex, bool interactable)
+        {
+            foreach (Transform child in handZones[zoneIndex].transform)
+            {
+                UICard card = child.GetComponent<UICard>();
+                if (card != null)
+                {
+                    card.IsInteractable = interactable;
+                }
+            }
+        }
+
+        // Highlight a hand zone to show it's the active turn
+        private void SetHandZoneHighlight(int zoneIndex, bool highlight)
+        {
+            Image zoneImage = handZones[zoneIndex].GetComponent<Image>();
+            if (zoneImage != null)
+            {
+                zoneImage.color = highlight ? new Color(1f, 1f, 0.5f, 0.3f) : new Color(1f, 1f, 1f, 0.1f);
+            }
+        }
+
+        // Get all cards from a specific hand zone (useful for showing current hand)
+        public List<Card> GetHandZoneCards(int zoneIndex)
+        {
+            List<Card> cards = new List<Card>();
+            if (zoneIndex < 0 || zoneIndex >= handZones.Length) return cards;
+
+            foreach (Transform child in handZones[zoneIndex].transform)
+            {
+                UICard uiCard = child.GetComponent<UICard>();
+                if (uiCard != null)
+                {
+                    cards.Add(uiCard.CardData);
+                }
+            }
+            return cards;
+        }
+
+        // Exit gameplay mode and return to normal state
+        public void ExitGameplayMode()
+        {
+            // Re-enable all cards as interactable if in arrangement mode
+            if (GameManager.Instance.CurrentState == GameState.Arranging)
+            {
+                SetAllCardsInteractable(true);
+            }
+
+            // Show discard zone
+            if (discardZone != null)
+            {
+                discardZone.gameObject.SetActive(true);
+            }
+
+            // Reset all hand zone highlights
+            for (int i = 0; i < handZones.Length; i++)
+            {
+                SetHandZoneHighlight(i, false);
+                SetHandZoneInteractable(i, false);
             }
         }
     }

@@ -329,6 +329,10 @@ namespace CallKitty.Gameplay
                 yield break;
             }
 
+            // Hide the player's cards in the UI Arrangement Manager for this turn
+            int currentTurn = GameManager.Instance.CurrentTurnIndex;
+            UIArrangementManager.Instance?.HideHandZoneCards(currentTurn);
+
             List<GameObject> currentTrickObjects = new List<GameObject>();
 
             // Instantiate cards for each player

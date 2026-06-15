@@ -43,7 +43,7 @@ namespace CallKitty.UI
             
             // Only hide all panels if we are NOT entering bidding state.
             // This allows the cards (arrangementPanel) to stay visible while the bidding panel is shown.
-            if (newState != GameState.Bidding)
+            if (newState != GameState.Bidding && newState != GameState.PlayingRound)
             {
                 HideAllPanels();
             }
@@ -65,12 +65,16 @@ namespace CallKitty.UI
                     UIArrangementManager.Instance?.PopulateCards(humanCards);
                     break;
                 case GameState.PlayingRound:
-                    gameplayPanel.SetActive(true);
+                    if (arrangementPanel) arrangementPanel.SetActive(true);
+                    if (gameplayPanel) gameplayPanel.SetActive(true);
+                    UIArrangementManager.Instance?.EnterGameplayMode();
                     break;
                 case GameState.RoundScoring:
+                    HideAllPanels();
                     scoreboardPanel.SetActive(true);
                     break;
                 case GameState.GameOver:
+                    HideAllPanels();
                     scoreboardPanel.SetActive(true);
                     break;
             }

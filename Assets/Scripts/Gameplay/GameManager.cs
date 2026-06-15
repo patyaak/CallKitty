@@ -33,6 +33,7 @@ namespace CallKitty.Gameplay
         public int CurrentTurnIndex { get; private set; } = 0; // 0 to 3
 
         public event Action<GameState> OnStateChanged;
+        public event Action<int> OnTurnStarted;
         public event Action<int, List<HandEvaluatedResult>, Player> OnTurnPlayed; // TurnIndex, Hands, Winner
         private int stateChangeVersion = 0;
 
@@ -206,6 +207,8 @@ namespace CallKitty.Gameplay
             
             while (CurrentTurnIndex < 4)
             {
+                OnTurnStarted?.Invoke(CurrentTurnIndex);
+
                 List<HandEvaluatedResult> evaluatedHands = new List<HandEvaluatedResult>();
                 List<List<Core.Card>> rawHands = new List<List<Core.Card>>();
                 List<Player> activePlayers = new List<Player>();
