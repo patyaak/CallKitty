@@ -28,6 +28,8 @@ namespace CallKitty.Gameplay
         [SerializeField] private Transform[] playingPositions = new Transform[4]; // 0: Player, 1: Bot1, 2: Bot2, 3: Bot3
         [SerializeField] private Vector2 playedCardSize = new Vector2(115f, 162f);
         [SerializeField] private float playedCardSpacing = 122f;
+        [SerializeField] private float playedCardThrowDuration = 0.45f;
+        [SerializeField] private float playedCardThrowArcHeight = 160f;
 
         [Header("Settings")]
         [SerializeField] private float dealSpeed = 0.1f; // Time between each card deal
@@ -331,9 +333,14 @@ namespace CallKitty.Gameplay
 
             // Hide the player's cards in the UI Arrangement Manager for this turn
             int currentTurn = GameManager.Instance.CurrentTurnIndex;
+            List<Vector3> playerCardStartPositions = UIArrangementManager.Instance != null
+                ? UIArrangementManager.Instance.GetHandZoneCardWorldPositions(currentTurn)
+                : new List<Vector3>();
             UIArrangementManager.Instance?.HideHandZoneCards(currentTurn);
 
             List<GameObject> currentTrickObjects = new List<GameObject>();
+            int cardsFinishedThrowing = 0;
+            int cardsThrowing = 0;
 
             // Instantiate cards for each player
             for (int i = 0; i < playedHands.Count; i++)
@@ -360,19 +367,20 @@ namespace CallKitty.Gameplay
                         uiCard.IsInteractable = false;
                     }
 
-                    // Spread cards slightly horizontally
-                    RectTransform rt = cardObj.GetComponent<RectTransform>();
-                    if (rt != null)
+                    ConfigurePlayedCardRect(cardObj, c, hand.Count);
+
+                    Vector3 startPosition = GetPlayedCardThrowStartPosition(i, c, currentTurn, playerCardStartPositions);
+                    cardsThrowing++;
+                    StartCoroutine(ThrowPlayedCardRoutine(cardObj, spawnParent, startPosition, c, hand.Count, () =>
                     {
-                        rt.anchorMin = new Vector2(0.5f, 0.5f);
-                        rt.anchorMax = new Vector2(0.5f, 0.5f);
-                        rt.pivot = new Vector2(0.5f, 0.5f);
-                        rt.sizeDelta = playedCardSize;
-                        rt.anchoredPosition = new Vector2((c - 1) * playedCardSpacing, 0);
-                        rt.localScale = Vector3.one;
-                        rt.localRotation = Quaternion.identity;
-                    }
+                        cardsFinishedThrowing++;
+                    }));
                 }
+            }
+
+            if (cardsThrowing > 0)
+            {
+                yield return new WaitUntil(() => cardsFinishedThrowing >= cardsThrowing);
             }
 
             // Wait for 5 seconds as requested
@@ -383,6 +391,123 @@ namespace CallKitty.Gameplay
             {
                 if (obj != null) Destroy(obj);
             }
+        }
+
+        private void ConfigurePlayedCardRect(GameObject cardObj, int cardIndex, int totalCards)
+        {
+            RectTransform rt = cardObj.GetComponent<RectTransform>();
+            if (rt == null) return;
+
+            float centeredIndex = cardIndex - ((totalCards - 1) * 0.5f);
+            rt.anchorMin = new Vector2(0.5f, 0.5f);
+            rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = playedCardSize;
+            rt.anchoredPosition = new Vector2(centeredIndex * playedCardSpacing, 0);
+            rt.localScale = Vector3.one;
+            rt.localRotation = Quaternion.identity;
+
+            Image cardImage = cardObj.GetComponent<Image>();
+            if (cardImage != null) cardImage.preserveAspect = true;
+        }
+
+        private Vector3 GetPlayedCardThrowStartPosition(int playerIndex, int cardIndex, int currentTurn, List<Vector3> playerCardStartPositions)
+        {
+            if (playerIndex == 0 && playerCardStartPositions != null && cardIndex < playerCardStartPositions.Count)
+            {
+                return playerCardStartPositions[cardIndex];
+            }
+
+            Transform fallback = null;
+            if (playerIndex == 0 && handZones != null && currentTurn >= 0 && currentTurn < handZones.Length)
+            {
+                fallback = handZones[currentTurn];
+            }
+            else if (botPositions != null)
+            {
+                int botIndex = playerIndex - 1;
+                if (botIndex >= 0 && botIndex < botPositions.Length)
+                {
+                    fallback = botPositions[botIndex];
+                }
+            }
+
+            if (fallback != null)
+            {
+                return fallback.position + new Vector3((cardIndex - 1) * 16f, 0f, 0f);
+            }
+
+            return startingPoint != null ? startingPoint.position : transform.position;
+        }
+
+        private IEnumerator ThrowPlayedCardRoutine(GameObject cardObj, Transform finalParent, Vector3 startPosition, int cardIndex, int totalCards, System.Action onComplete)
+        {
+            if (cardObj == null || finalParent == null)
+            {
+                onComplete?.Invoke();
+                yield break;
+            }
+
+            Vector3 targetPosition = cardObj.transform.position;
+            Transform animationParent = GetCardAnimationParent();
+            cardObj.transform.SetParent(animationParent, true);
+            cardObj.transform.SetAsLastSibling();
+            cardObj.transform.position = startPosition;
+
+            float centeredIndex = cardIndex - ((totalCards - 1) * 0.5f);
+            float startAngle = centeredIndex * -18f;
+            float endAngle = centeredIndex * 4f;
+            cardObj.transform.rotation = Quaternion.Euler(0f, 0f, startAngle);
+            cardObj.transform.localScale = Vector3.one * 0.95f;
+
+            Vector3 midPoint = (startPosition + targetPosition) * 0.5f + Vector3.up * playedCardThrowArcHeight;
+            float elapsed = 0f;
+            float duration = Mathf.Max(0.05f, playedCardThrowDuration);
+
+            while (elapsed < duration)
+            {
+                if (cardObj == null)
+                {
+                    onComplete?.Invoke();
+                    yield break;
+                }
+
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+                float eased = 1f - Mathf.Pow(1f - t, 3f);
+                float rotateT = t * t * (3f - 2f * t);
+
+                Vector3 firstLeg = Vector3.Lerp(startPosition, midPoint, eased);
+                Vector3 secondLeg = Vector3.Lerp(midPoint, targetPosition, eased);
+                cardObj.transform.position = Vector3.Lerp(firstLeg, secondLeg, eased);
+                cardObj.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.LerpAngle(startAngle, endAngle, rotateT));
+                cardObj.transform.localScale = Vector3.one * Mathf.Lerp(0.95f, 1f, rotateT);
+
+                yield return null;
+            }
+
+            if (cardObj != null)
+            {
+                cardObj.transform.SetParent(finalParent, false);
+                ConfigurePlayedCardRect(cardObj, cardIndex, totalCards);
+            }
+
+            onComplete?.Invoke();
+        }
+
+        private Transform GetCardAnimationParent()
+        {
+            if (startingPoint != null && startingPoint.parent != null)
+            {
+                return startingPoint.parent;
+            }
+
+            if (playingPositions != null && playingPositions.Length > 0 && playingPositions[0] != null && playingPositions[0].parent != null)
+            {
+                return playingPositions[0].parent;
+            }
+
+            return transform;
         }
 
         private IEnumerator MoveCardSmoothRoutine(Transform cardTransform, Vector3 targetPosition)

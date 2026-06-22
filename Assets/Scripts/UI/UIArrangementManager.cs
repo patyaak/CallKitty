@@ -299,6 +299,19 @@ namespace CallKitty.UI
             SetHandZoneHighlight(zoneIndex, false);
         }
 
+        public List<Vector3> GetHandZoneCardWorldPositions(int zoneIndex)
+        {
+            List<Vector3> positions = new List<Vector3>();
+            if (zoneIndex < 0 || zoneIndex >= handZones.Length) return positions;
+
+            foreach (Transform child in handZones[zoneIndex].transform)
+            {
+                positions.Add(child.position);
+            }
+
+            return positions;
+        }
+
         // Enable/disable interaction for a specific hand zone
         private void SetHandZoneInteractable(int zoneIndex, bool interactable)
         {

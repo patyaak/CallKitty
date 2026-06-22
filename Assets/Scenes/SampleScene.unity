@@ -3457,9 +3457,12 @@ MonoBehaviour:
   - {fileID: 1862796130}
   playedCardSize: {x: 200, y: 200}
   playedCardSpacing: 150
+  playedCardThrowDuration: 0.45
+  playedCardThrowStagger: 0.07
+  playedCardThrowArcHeight: 160
   dealSpeed: 0.1
   cardMoveDuration: 0.5
-  trickShowDuration: 5
+  trickShowDuration: 4
 --- !u!1 &955541670
 GameObject:
   m_ObjectHideFlags: 0
