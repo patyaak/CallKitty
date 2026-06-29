@@ -72,10 +72,11 @@ namespace CallKitty.UI
             var players = GameManager.Instance.Players;
             for (int i = 0; i < players.Count; i++)
             {
-                rows[i].nameText.text = players[i].PlayerName;
-                rows[i].callText.text = players[i].CurrentCall.ToString();
-                rows[i].wonText.text = players[i].HandsWonThisRound.ToString();
-                rows[i].scoreText.text = players[i].TotalScore.ToString("F1"); // Show decimal for bonus
+                if (rows == null || i >= rows.Length || rows[i] == null) continue;
+                if (rows[i].nameText != null) rows[i].nameText.text = players[i].PlayerName;
+                if (rows[i].callText != null) rows[i].callText.text = players[i].CurrentCall.ToString();
+                if (rows[i].wonText != null) rows[i].wonText.text = players[i].HandsWonThisRound.ToString();
+                if (rows[i].scoreText != null) rows[i].scoreText.text = players[i].TotalScore.ToString("F1"); // Show decimal for bonus
             }
         }
 

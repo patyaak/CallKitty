@@ -111,7 +111,7 @@ namespace CallKitty.Gameplay
                     StartCoroutine(PlayingRoundRoutine());
                     break;
                 case GameState.RoundScoring:
-                    ScoreRound();
+                    StartCoroutine(ScoreRoundRoutine());
                     break;
                 case GameState.GameOver:
                     Debug.Log("Game Over!");
@@ -227,29 +227,38 @@ namespace CallKitty.Gameplay
                     }
                 }
 
+                // Determine winner
+                Player turnWinner = null;
+                int winnerPlayerID = 0; // Fallback to Player ID 0
+                if (activePlayers.Count > 0)
+                {
+                    int winnerIndex = 0;
+                    for (int i = 1; i < evaluatedHands.Count; i++)
+                    {
+                        if (evaluatedHands[i].CompareTo(evaluatedHands[winnerIndex]) > 0)
+                        {
+                            winnerIndex = i;
+                        }
+                    }
+
+                    turnWinner = activePlayers[winnerIndex];
+                    turnWinner.HandsWonThisRound++;
+                    winnerPlayerID = turnWinner.PlayerID;
+                    
+                    Debug.Log($"Turn {CurrentTurnIndex + 1} Winner: {turnWinner.PlayerName} with {evaluatedHands[winnerIndex].Rank}");
+                }
+
                 // Show visual animation of the trick
                 if (VisualDealer.Instance != null)
                 {
-                    yield return StartCoroutine(VisualDealer.Instance.ShowTrickAnimation(rawHands));
+                    yield return StartCoroutine(VisualDealer.Instance.ShowTrickAnimation(rawHands, winnerPlayerID));
                 }
-
-                // Determine winner
-                int winnerIndex = 0;
-                for (int i = 1; i < evaluatedHands.Count; i++)
-                {
-                    if (evaluatedHands[i].CompareTo(evaluatedHands[winnerIndex]) > 0)
-                    {
-                        winnerIndex = i;
-                    }
-                }
-
-                Player turnWinner = activePlayers[winnerIndex];
-                turnWinner.HandsWonThisRound++;
-                
-                Debug.Log($"Turn {CurrentTurnIndex + 1} Winner: {turnWinner.PlayerName} with {evaluatedHands[winnerIndex].Rank}");
 
                 // Invoke event for UI
-                OnTurnPlayed?.Invoke(CurrentTurnIndex, evaluatedHands, turnWinner);
+                if (turnWinner != null)
+                {
+                    OnTurnPlayed?.Invoke(CurrentTurnIndex, evaluatedHands, turnWinner);
+                }
 
                 CurrentTurnIndex++;
             }
@@ -257,38 +266,18 @@ namespace CallKitty.Gameplay
             ChangeState(GameState.RoundScoring);
         }
 
-        private void ScoreRound()
+        private IEnumerator ScoreRoundRoutine()
         {
-            Debug.Log("Scoring Phase...");
-            // Move this to ScoreManager soon, but for now, simple implementation
-            foreach (var player in Players)
+            if (ScoreManager.Instance != null)
             {
-                int call = player.CurrentCall;
-                int won = player.HandsWonThisRound;
-                float roundScore = 0f;
-
-                if (call == 0)
-                {
-                    if (won == 0) roundScore = 1.0f; // Bonus for successful Nil
-                    else roundScore = -1.0f; // Penalty for failed Nil
-                }
-                else
-                {
-                    if (won >= call)
-                    {
-                        // Exceeded or met call
-                        roundScore = call + ((won - call) * 0.1f);
-                    }
-                    else
-                    {
-                        // Failed call
-                        roundScore = -call;
-                    }
-                }
-
-                player.TotalScore += roundScore;
-                Debug.Log($"{player.PlayerName}: Call {call}, Won {won}, Round Score {roundScore}, Total {player.TotalScore}");
+                ScoreManager.Instance.ProcessRoundEnd();
             }
+            else
+            {
+                CalculateScoresFallback();
+            }
+
+            yield return new WaitForSeconds(5f);
 
             // Check Game Over
             bool gameOver = false;
@@ -307,8 +296,37 @@ namespace CallKitty.Gameplay
             }
             else
             {
-                // Next round
                 ChangeState(GameState.Dealing);
+            }
+        }
+
+        private void CalculateScoresFallback()
+        {
+            Debug.Log("Scoring Phase (Fallback)...");
+            foreach (var player in Players)
+            {
+                int call = player.CurrentCall;
+                int won = player.HandsWonThisRound;
+                float roundScore = 0f;
+
+                if (call == 0)
+                {
+                    if (won == 0) roundScore = 1.0f;
+                    else roundScore = -1.0f;
+                }
+                else
+                {
+                    if (won >= call)
+                    {
+                        roundScore = call + ((won - call) * 0.1f);
+                    }
+                    else
+                    {
+                        roundScore = -call;
+                    }
+                }
+
+                player.TotalScore += roundScore;
             }
         }
 

@@ -323,7 +323,7 @@ namespace CallKitty.Gameplay
             onComplete?.Invoke();
         }
 
-        public IEnumerator ShowTrickAnimation(List<List<Card>> playedHands)
+        public IEnumerator ShowTrickAnimation(List<List<Card>> playedHands, int winnerPlayerID)
         {
             if (uiCardPrefab == null)
             {
@@ -386,10 +386,91 @@ namespace CallKitty.Gameplay
             // Wait for 5 seconds as requested
             yield return new WaitForSeconds(trickShowDuration);
 
+            // Determine gather target position
+            Vector3 targetPosition = transform.position; // Fallback
+            if (winnerPlayerID == 0)
+            {
+                if (handZones != null && currentTurn >= 0 && currentTurn < handZones.Length && handZones[currentTurn] != null)
+                {
+                    targetPosition = handZones[currentTurn].position;
+                }
+            }
+            else
+            {
+                int botIndex = winnerPlayerID - 1;
+                if (botPositions != null && botIndex >= 0 && botIndex < botPositions.Length && botPositions[botIndex] != null)
+                {
+                    targetPosition = botPositions[botIndex].position;
+                }
+            }
+
+            // Animate cards flying to target position and scaling down
+            yield return StartCoroutine(GatherPlayedCardsRoutine(currentTrickObjects, targetPosition));
+
             // Destroy the cards after showing
             foreach (var obj in currentTrickObjects)
             {
                 if (obj != null) Destroy(obj);
+            }
+        }
+
+        private IEnumerator GatherPlayedCardsRoutine(List<GameObject> cardObjs, Vector3 targetPosition)
+        {
+            float duration = 0.6f;
+            float elapsed = 0f;
+
+            Transform animationParent = GetCardAnimationParent();
+            List<Vector3> startPositions = new List<Vector3>();
+            List<Quaternion> startRotations = new List<Quaternion>();
+
+            foreach (var obj in cardObjs)
+            {
+                if (obj != null)
+                {
+                    obj.transform.SetParent(animationParent, true);
+                    obj.transform.SetAsLastSibling();
+                    startPositions.Add(obj.transform.position);
+                    startRotations.Add(obj.transform.rotation);
+                }
+                else
+                {
+                    startPositions.Add(targetPosition);
+                    startRotations.Add(Quaternion.identity);
+                }
+            }
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+
+                // Cubic ease-in for a natural acceleration gather feel
+                float tPos = t * t * t;
+                float tScale = t * t;
+
+                for (int i = 0; i < cardObjs.Count; i++)
+                {
+                    if (cardObjs[i] != null)
+                    {
+                        cardObjs[i].transform.position = Vector3.Lerp(startPositions[i], targetPosition, tPos);
+                        cardObjs[i].transform.localScale = Vector3.Lerp(Vector3.one, Vector3.zero, tScale);
+                        
+                        // Spin effect: rotate 180 degrees over flight
+                        float angle = Mathf.LerpAngle(startRotations[i].eulerAngles.z, startRotations[i].eulerAngles.z + 180f, tPos);
+                        cardObjs[i].transform.rotation = Quaternion.Euler(0f, 0f, angle);
+                    }
+                }
+                yield return null;
+            }
+
+            // Snap to final values
+            for (int i = 0; i < cardObjs.Count; i++)
+            {
+                if (cardObjs[i] != null)
+                {
+                    cardObjs[i].transform.position = targetPosition;
+                    cardObjs[i].transform.localScale = Vector3.zero;
+                }
             }
         }
 
