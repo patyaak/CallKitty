@@ -18,11 +18,26 @@ namespace CallKitty.Gameplay
                 totalScore += EstimateWinValue(eval);
             }
 
-            // Round the estimated wins to get the bid, allowing Nil calls.
-            CurrentCall = Mathf.RoundToInt(totalScore);
-            CurrentCall = Mathf.Clamp(CurrentCall, 0, 4);
+            // 20% chance the bot plays it safe and bids 0 regardless of hand strength
+            bool playingConservative = UnityEngine.Random.value < 0.20f;
+            if (playingConservative || totalScore <= 0f)
+            {
+                CurrentCall = 0;
+            }
+            else
+            {
+                // Competition discount varies between 0.65x and 0.85x to account for other players
+                float competitionDiscount = UnityEngine.Random.Range(0.65f, 0.85f);
+                float discountedScore = totalScore * competitionDiscount;
 
-            Debug.Log($"AI {PlayerName} called {CurrentCall} (Calculated Score: {totalScore:F2})");
+                // Wider variance (-0.5 to +0.5) so mediocre hands often round down to 0
+                float variance = UnityEngine.Random.Range(-0.5f, 0.5f);
+
+                CurrentCall = Mathf.RoundToInt(discountedScore + variance);
+                CurrentCall = Mathf.Clamp(CurrentCall, 0, 4);
+            }
+
+            Debug.Log($"AI {PlayerName} called {CurrentCall} (Raw Score: {totalScore:F2}, Conservative: {playingConservative})");
         }
 
         private List<List<Card>> GetHandsForBidding()
@@ -55,16 +70,13 @@ namespace CallKitty.Gameplay
             switch(eval.Rank)
             {
                 case HandRank.Trail: return 1.0f;
-                case HandRank.PureSequence: return 0.9f;
-                case HandRank.Sequence: return 0.7f;
-                case HandRank.Color: return 0.5f;
+                case HandRank.PureSequence: return 0.8f;
+                case HandRank.Sequence: return 0.5f;
+                case HandRank.Color: return 0.3f;
                 case HandRank.Pair:
-                    if (eval.SortedCards[0].Rank >= Rank.Ace) return 0.4f;
-                    if (eval.SortedCards[0].Rank >= Rank.Jack) return 0.3f;
-                    if (eval.SortedCards[0].Rank >= Rank.Eight) return 0.15f;
-                    return 0.05f;
+                    if (eval.SortedCards[0].Rank >= Rank.Jack) return 0.1f; // J, Q, K, A
+                    return 0.0f; // low pairs have very little chance to win in standard rounds
                 default:
-                    if (eval.SortedCards[0].Rank >= Rank.Ace) return 0.1f;
                     return 0f;
             }
         }

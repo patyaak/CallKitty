@@ -20,6 +20,7 @@ namespace CallKitty.UI
         [Header("UI Elements")]
         [SerializeField] private Button readyButton;
         [SerializeField] private Button arrangeButton;
+        [SerializeField] private Button scoreButton;
         [SerializeField] private GameObject uiCardPrefab;
 
         private class RankedUIHand
@@ -124,6 +125,11 @@ namespace CallKitty.UI
                 arrangeButton.gameObject.SetActive(false);
                 arrangeButton.interactable = false;
             }
+            if (scoreButton != null)
+            {
+                scoreButton.gameObject.SetActive(false);
+                scoreButton.interactable = false;
+            }
         }
 
         public void PopulateCards(List<Card> cards)
@@ -167,6 +173,12 @@ namespace CallKitty.UI
                     arrangeButton.gameObject.SetActive(false);
                     arrangeButton.interactable = false;
                 }
+
+                if (scoreButton != null)
+                {
+                    scoreButton.gameObject.SetActive(false);
+                    scoreButton.interactable = false;
+                }
             }
         }
 
@@ -191,6 +203,7 @@ namespace CallKitty.UI
             if (GameManager.Instance.CurrentState != GameState.Arranging) return;
             if (!ValidateArrangement()) return;
 
+            OnArrangeClicked();
             StartCoroutine(FinishArrangementRoutine());
         }
 
@@ -203,6 +216,11 @@ namespace CallKitty.UI
             {
                 arrangeButton.interactable = false;
                 arrangeButton.gameObject.SetActive(false);
+            }
+            if (scoreButton != null)
+            {
+                scoreButton.interactable = false;
+                scoreButton.gameObject.SetActive(false);
             }
             SetAllCardsInteractable(false);
 
@@ -246,6 +264,13 @@ namespace CallKitty.UI
             {
                 arrangeButton.gameObject.SetActive(false);
                 arrangeButton.interactable = false;
+            }
+
+            // Show score button during gameplay
+            if (scoreButton != null)
+            {
+                scoreButton.gameObject.SetActive(true);
+                scoreButton.interactable = true;
             }
 
             // Hide discard zone during gameplay
@@ -359,6 +384,13 @@ namespace CallKitty.UI
             if (GameManager.Instance.CurrentState == GameState.Arranging)
             {
                 SetAllCardsInteractable(true);
+            }
+
+            // Hide score button when leaving gameplay
+            if (scoreButton != null)
+            {
+                scoreButton.gameObject.SetActive(false);
+                scoreButton.interactable = false;
             }
 
             // Show discard zone

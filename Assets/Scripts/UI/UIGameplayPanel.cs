@@ -50,6 +50,8 @@ namespace CallKitty.UI
                     ClearCards(i);
                 }
                 centerWinnerText.text = "Playing...";
+                
+                UpdateWinValueTexts();
             }
         }
 
@@ -81,6 +83,17 @@ namespace CallKitty.UI
                 {
                     playerUIs[i].backgroundHighlight.color = Color.white; // Or default
                 }
+            }
+
+            UpdateWinValueTexts();
+        }
+
+        private void UpdateWinValueTexts()
+        {
+            var biddingPanelScript = FindObjectOfType<UIBiddingPanel>(true);
+            if (biddingPanelScript != null)
+            {
+                biddingPanelScript.UpdateWinValues();
             }
         }
 

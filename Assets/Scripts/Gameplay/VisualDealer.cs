@@ -404,6 +404,13 @@ namespace CallKitty.Gameplay
                 }
             }
 
+            // Update the win values in UI right when cards start gathering/disappearing
+            var biddingPanelScript = FindObjectOfType<UIBiddingPanel>(true);
+            if (biddingPanelScript != null)
+            {
+                biddingPanelScript.UpdateWinValues();
+            }
+
             // Animate cards flying to target position and scaling down
             yield return StartCoroutine(GatherPlayedCardsRoutine(currentTrickObjects, targetPosition));
 

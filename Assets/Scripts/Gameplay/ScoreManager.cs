@@ -48,8 +48,7 @@ namespace CallKitty.Gameplay
 
                 if (call == 0)
                 {
-                    if (won == 0) roundScore = 1.0f; // Bonus for successful Nil
-                    else roundScore = -1.0f; // Penalty for failed Nil
+                    roundScore = 0f; // Bid 0 = opt out, no scoring regardless of wins
                 }
                 else
                 {

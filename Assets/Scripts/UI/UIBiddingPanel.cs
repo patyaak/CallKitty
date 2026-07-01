@@ -13,6 +13,7 @@ namespace CallKitty.UI
         [SerializeField] private Button closeButton;
         [SerializeField] private TMPro.TextMeshProUGUI[] playerBidTexts; // 0: Player, 1-3: Bots
         [SerializeField] private GameObject[] winValuePanels; // 0: Player, 1-3: Bots
+        [SerializeField] private TMPro.TextMeshProUGUI[] playerWinTexts; // 0: Player, 1-3: Bots
 
         private int selectedBid = -1;
 
@@ -33,6 +34,39 @@ namespace CallKitty.UI
             if (closeButton != null)
             {
                 closeButton.onClick.AddListener(OnCloseButtonClicked);
+            }
+        }
+
+        private void Start()
+        {
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.OnStateChanged += HandleStateChanged;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.OnStateChanged -= HandleStateChanged;
+            }
+        }
+
+        private void HandleStateChanged(GameState state)
+        {
+            // Hide winValue panels during non-playing phases
+            if (state == GameState.Dealing || state == GameState.Arranging || state == GameState.Bidding)
+            {
+                HideAllWinValuePanels();
+            }
+        }
+
+        private void HideAllWinValuePanels()
+        {
+            foreach (var panel in winValuePanels)
+            {
+                if (panel != null) panel.SetActive(false);
             }
         }
 
@@ -109,6 +143,9 @@ namespace CallKitty.UI
                 }
             }
 
+            // Set initial win values to 0
+            UpdateWinValues();
+
             // 3. Trigger Card Throw Animation
             UIArrangementManager.Instance?.HideDiscardCard();
 
@@ -137,16 +174,46 @@ namespace CallKitty.UI
             GameManager.Instance.CompleteBidding();
         }
 
+        public void UpdateWinValues()
+        {
+            // If the direct TextMeshPro references are assigned, use them
+            if (playerWinTexts != null && playerWinTexts.Length > 0)
+            {
+                for (int i = 0; i < playerWinTexts.Length; i++)
+                {
+                    if (playerWinTexts[i] != null && i < GameManager.Instance.Players.Count)
+                    {
+                        playerWinTexts[i].text = GameManager.Instance.Players[i].HandsWonThisRound.ToString();
+                    }
+                }
+                return;
+            }
+
+            // Fallback to dynamic lookup if direct references are not set
+            for (int i = 0; i < winValuePanels.Length; i++)
+            {
+                if (winValuePanels[i] != null && i < GameManager.Instance.Players.Count)
+                {
+                    Transform winValueTransform = winValuePanels[i].transform.Find("winValue");
+                    if (winValueTransform != null)
+                    {
+                        var winText = winValueTransform.GetComponent<TMPro.TextMeshProUGUI>();
+                        if (winText != null)
+                        {
+                            winText.text = GameManager.Instance.Players[i].HandsWonThisRound.ToString();
+                        }
+                    }
+                }
+            }
+        }
+
         private void OnEnable()
         {
             selectedBid = -1;
             if (okButton != null) okButton.interactable = false;
 
             // Hide winValue panels until bid is confirmed
-            foreach (var panel in winValuePanels)
-            {
-                if (panel != null) panel.SetActive(false);
-            }
+            HideAllWinValuePanels();
 
             // Re-enable buttons and reset colors
             foreach (var btn in callButtons)

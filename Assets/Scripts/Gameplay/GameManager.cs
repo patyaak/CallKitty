@@ -311,8 +311,7 @@ namespace CallKitty.Gameplay
 
                 if (call == 0)
                 {
-                    if (won == 0) roundScore = 1.0f;
-                    else roundScore = -1.0f;
+                    roundScore = 0f; // Bid 0 = opt out, no scoring regardless of wins
                 }
                 else
                 {

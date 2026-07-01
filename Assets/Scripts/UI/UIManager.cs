@@ -54,6 +54,7 @@ namespace CallKitty.UI
             {
                 case GameState.Dealing:
                     if (arrangementPanel) arrangementPanel.SetActive(true);
+                    UIArrangementManager.Instance?.ExitGameplayMode();
                     break;
                 case GameState.Bidding:
                     if (biddingPanel) biddingPanel.SetActive(true);
