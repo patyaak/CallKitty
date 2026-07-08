@@ -155,7 +155,11 @@ namespace CallKitty.UI
             {
                 readyButton.gameObject.SetActive(true);
                 readyButton.interactable = ValidateArrangement();
-                
+                 if (scoreButton != null)
+                {
+                    scoreButton.gameObject.SetActive(true);
+                    scoreButton.interactable = true;
+                }
                 // Also activate arrange button when cards are dealt
                 if (arrangeButton != null)
                 {
@@ -174,11 +178,7 @@ namespace CallKitty.UI
                     arrangeButton.interactable = false;
                 }
 
-                if (scoreButton != null)
-                {
-                    scoreButton.gameObject.SetActive(false);
-                    scoreButton.interactable = false;
-                }
+               
             }
         }
 
@@ -269,8 +269,8 @@ namespace CallKitty.UI
             // Show score button during gameplay
             if (scoreButton != null)
             {
-                scoreButton.gameObject.SetActive(true);
-                scoreButton.interactable = true;
+                scoreButton.gameObject.SetActive(false);
+                scoreButton.interactable = false;
             }
 
             // Hide discard zone during gameplay
