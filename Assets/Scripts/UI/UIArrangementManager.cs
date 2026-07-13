@@ -104,6 +104,15 @@ namespace CallKitty.UI
             for (int handIndex = 0; handIndex < rankedHands.Count; handIndex++)
             {
                 List<UICard> uiCards = rankedHands[handIndex].Cards;
+
+                // Sort cards within each hand by rank (Ace-low: A, 2, 3, ... K)
+                uiCards.Sort((a, b) =>
+                {
+                    int rankA = a.CardData.Rank == Rank.Ace ? 1 : (int)a.CardData.Rank;
+                    int rankB = b.CardData.Rank == Rank.Ace ? 1 : (int)b.CardData.Rank;
+                    return rankA.CompareTo(rankB);
+                });
+
                 for (int cardIndex = 0; cardIndex < uiCards.Count; cardIndex++)
                 {
                     UICard uiCard = uiCards[cardIndex];
@@ -112,7 +121,7 @@ namespace CallKitty.UI
                 }
             }
 
-            Debug.Log("[UIArrangementManager] Ranked existing hands from strongest to weakest.");
+            Debug.Log("[UIArrangementManager] Ranked existing hands from strongest to weakest, cards sorted by rank.");
         }
 
         private void OnEnable()

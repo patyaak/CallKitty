@@ -9,35 +9,54 @@ namespace CallKitty.Gameplay
     {
         public void PerformBidding()
         {
-            float totalScore = 0f;
+            float totalStrength = 0f;
             List<List<Card>> handsToEvaluate = GetHandsForBidding();
 
             foreach (var hand in handsToEvaluate)
             {
                 var eval = HandEvaluator.Evaluate3CardHand(hand);
-                totalScore += EstimateWinValue(eval);
+                totalStrength += EstimateHandStrength(eval);
             }
 
-            // 20% chance the bot plays it safe and bids 0 regardless of hand strength
-            bool playingConservative = UnityEngine.Random.value < 0.20f;
-            if (playingConservative || totalScore <= 0f)
+            float averageStrength = totalStrength / Mathf.Max(1, handsToEvaluate.Count);
+            float bidScore = averageStrength + UnityEngine.Random.Range(-0.45f, 0.15f);
+
+            if (averageStrength < 0.6f)
             {
                 CurrentCall = 0;
             }
+            else if (averageStrength < 1.0f)
+            {
+                CurrentCall = UnityEngine.Random.value < 0.8f ? 0 : 1;
+            }
+            else if (averageStrength < 1.6f)
+            {
+                CurrentCall = UnityEngine.Random.value < 0.7f ? 1 : 0;
+            }
+            else if (averageStrength < 2.2f)
+            {
+                CurrentCall = UnityEngine.Random.value < 0.6f ? 2 : 1;
+            }
+            else if (averageStrength < 2.8f)
+            {
+                CurrentCall = UnityEngine.Random.value < 0.7f ? 3 : 2;
+            }
             else
             {
-                // Competition discount varies between 0.65x and 0.85x to account for other players
-                float competitionDiscount = UnityEngine.Random.Range(0.65f, 0.85f);
-                float discountedScore = totalScore * competitionDiscount;
-
-                // Wider variance (-0.5 to +0.5) so mediocre hands often round down to 0
-                float variance = UnityEngine.Random.Range(-0.5f, 0.5f);
-
-                CurrentCall = Mathf.RoundToInt(discountedScore + variance);
-                CurrentCall = Mathf.Clamp(CurrentCall, 0, 4);
+                CurrentCall = UnityEngine.Random.value < 0.8f ? 4 : 3;
             }
 
-            Debug.Log($"AI {PlayerName} called {CurrentCall} (Raw Score: {totalScore:F2}, Conservative: {playingConservative})");
+            Debug.Log($"AI {PlayerName} called {CurrentCall} (Average Strength: {averageStrength:F2}, Bid Score: {bidScore:F2})");
+        }
+
+        public static int EstimateBidFromScore(float strengthScore)
+        {
+            if (strengthScore < 0.6f) return 0;
+            if (strengthScore < 1.0f) return 1;
+            if (strengthScore < 1.6f) return 1;
+            if (strengthScore < 2.2f) return 2;
+            if (strengthScore < 2.8f) return 3;
+            return 4;
         }
 
         private List<List<Card>> GetHandsForBidding()
@@ -65,19 +84,26 @@ namespace CallKitty.Gameplay
             return hands;
         }
 
-        private float EstimateWinValue(HandEvaluatedResult eval)
+        private float EstimateHandStrength(HandEvaluatedResult eval)
         {
-            switch(eval.Rank)
+            switch (eval.Rank)
             {
-                case HandRank.Trail: return 1.0f;
-                case HandRank.PureSequence: return 0.8f;
-                case HandRank.Sequence: return 0.5f;
-                case HandRank.Color: return 0.3f;
+                case HandRank.Trail:
+                    return 3.2f;
+                case HandRank.PureSequence:
+                    return 2.6f;
+                case HandRank.Sequence:
+                    return 1.8f;
+                case HandRank.Color:
+                    return 1.2f;
                 case HandRank.Pair:
-                    if (eval.SortedCards[0].Rank >= Rank.Jack) return 0.1f; // J, Q, K, A
-                    return 0.0f; // low pairs have very little chance to win in standard rounds
+                    int pairRank = (int)eval.SortedCards[0].Rank;
+                    if (pairRank >= (int)Rank.Jack) return 0.95f;
+                    if (pairRank >= (int)Rank.Seven) return 0.6f;
+                    return 0.3f;
                 default:
-                    return 0f;
+                    int topCard = (int)eval.SortedCards[0].Rank;
+                    return Mathf.Clamp01((topCard - 8) / 10f) * 0.35f;
             }
         }
 
@@ -97,6 +123,17 @@ namespace CallKitty.Gameplay
                         tempCards.Remove(card);
                     }
                 }
+            }
+
+            // Sort cards within each hand by rank (Ace-low: A, 2, 3, ... K)
+            foreach (var hand in arranged)
+            {
+                hand.Sort((a, b) =>
+                {
+                    int rankA = a.Rank == Rank.Ace ? 1 : (int)a.Rank;
+                    int rankB = b.Rank == Rank.Ace ? 1 : (int)b.Rank;
+                    return rankA.CompareTo(rankB);
+                });
             }
 
             Card discard = tempCards.Count > 0 ? tempCards[0] : new Card();

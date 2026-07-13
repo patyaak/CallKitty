@@ -169,4 +169,4 @@ MonoBehaviour:
   - suit: 3
     rank: 14
     sprite: {fileID: 21300000, guid: 40c1a004b877e8746bde39d66aa7e320, type: 3}
-  cardBack: {fileID: 21300000, guid: e2c253c760ee7b741bf168fb4a0ed5bb, type: 3}
+  cardBack: {fileID: 21300000, guid: 3df8cc8dae51efb48bdb0008d77c773a, type: 3}

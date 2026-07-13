@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using CallKitty.Core;
+using CallKitty.Gameplay;
 
 namespace CallKitty.Tests
 {
@@ -73,6 +74,16 @@ namespace CallKitty.Tests
             Assert.AreEqual(HandRank.HighCard, res1.Rank);
             Assert.AreEqual(HandRank.HighCard, res2.Rank);
             Assert.IsTrue(res1.CompareTo(res2) > 0);
+        }
+
+        [Test]
+        public void EstimateBidFromScore_MapsStrengthToNaturalBidLevels()
+        {
+            Assert.AreEqual(0, PlayerAI.EstimateBidFromScore(0.5f));
+            Assert.AreEqual(1, PlayerAI.EstimateBidFromScore(1.0f));
+            Assert.AreEqual(2, PlayerAI.EstimateBidFromScore(1.4f));
+            Assert.AreEqual(3, PlayerAI.EstimateBidFromScore(2.0f));
+            Assert.AreEqual(4, PlayerAI.EstimateBidFromScore(2.5f));
         }
     }
 }
