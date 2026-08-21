@@ -35,6 +35,9 @@ namespace CallKitty.Gameplay
         [SerializeField] private float dealSpeed = 0.1f; // Time between each card deal
         [SerializeField] private float cardMoveDuration = 0.5f; // Time it takes for a card to reach its destination
         [SerializeField] private float trickShowDuration = 5f; // Time to show the cards in the trick
+        
+        [Header("UI")]
+        [SerializeField] private GameObject drawIndicator;
 
         private List<GameObject> activeCards = new List<GameObject>();
         private List<GameObject> activeBotCards = new List<GameObject>();
@@ -323,7 +326,7 @@ namespace CallKitty.Gameplay
             onComplete?.Invoke();
         }
 
-        public IEnumerator ShowTrickAnimation(List<List<Card>> playedHands, int winnerPlayerID)
+        public IEnumerator ShowTrickAnimation(List<List<Card>> playedHands, int winnerPlayerID, bool isDraw)
         {
             if (uiCardPrefab == null)
             {
@@ -385,6 +388,31 @@ namespace CallKitty.Gameplay
 
             // Wait for 5 seconds as requested
             yield return new WaitForSeconds(trickShowDuration);
+
+            if (isDraw)
+            {
+                if (drawIndicator != null)
+                {
+                    drawIndicator.SetActive(true);
+                }
+
+                // Instead of gathering cards to a winner, leave them at their instantiated positions
+                // and turn them off so they appear to disappear in-place.
+                foreach (var obj in currentTrickObjects)
+                {
+                    if (obj != null) obj.SetActive(false);
+                }
+
+                // Keep the draw indicator visible briefly, then hide it again.
+                yield return new WaitForSeconds(2f);
+
+                if (drawIndicator != null)
+                {
+                    drawIndicator.SetActive(false);
+                }
+
+                yield break;
+            }
 
             // Determine gather target position
             Vector3 targetPosition = transform.position; // Fallback

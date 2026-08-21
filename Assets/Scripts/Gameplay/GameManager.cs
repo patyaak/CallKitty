@@ -24,6 +24,9 @@ namespace CallKitty.Gameplay
 
         public GameState CurrentState { get; private set; } = GameState.Init;
 
+        [Header("Startup")]
+        [SerializeField] private bool startGameOnAwake = false;
+
         [SerializeField] private DeckManager deckManager;
         
         // 0 is Human, 1-3 are AI
@@ -34,7 +37,7 @@ namespace CallKitty.Gameplay
 
         public event Action<GameState> OnStateChanged;
         public event Action<int> OnTurnStarted;
-        public event Action<int, List<HandEvaluatedResult>, Player> OnTurnPlayed; // TurnIndex, Hands, Winner
+        public event Action<int, List<HandEvaluatedResult>, Player, bool> OnTurnPlayed; // TurnIndex, Hands, Winner, IsDraw
         private int stateChangeVersion = 0;
 
         private void Awake()
@@ -52,14 +55,23 @@ namespace CallKitty.Gameplay
 
         private void Start()
         {
-            // Start the game loop automatically for testing
-            // We wait one frame to ensure all other scripts (like UIManager) have initialized and subscribed to events
-            StartCoroutine(DelayedInit());
+            if (startGameOnAwake)
+            {
+                // Start the game loop automatically for testing
+                // We wait one frame to ensure all other scripts (like UIManager) have initialized and subscribed to events
+                StartCoroutine(DelayedInit());
+            }
         }
 
         private IEnumerator DelayedInit()
         {
-            yield return null; 
+            yield return null;
+            InitializeGame();
+        }
+
+        public void StartGame()
+        {
+            if (CurrentState != GameState.Init) return;
             InitializeGame();
         }
 
@@ -227,9 +239,10 @@ namespace CallKitty.Gameplay
                     }
                 }
 
-                // Determine winner
+                // Determine winner or draw
                 Player turnWinner = null;
                 int winnerPlayerID = 0; // Fallback to Player ID 0
+                bool isDraw = false;
                 if (activePlayers.Count > 0)
                 {
                     int winnerIndex = 0;
@@ -241,24 +254,38 @@ namespace CallKitty.Gameplay
                         }
                     }
 
-                    turnWinner = activePlayers[winnerIndex];
-                    turnWinner.HandsWonThisRound++;
-                    winnerPlayerID = turnWinner.PlayerID;
-                    
-                    Debug.Log($"Turn {CurrentTurnIndex + 1} Winner: {turnWinner.PlayerName} with {evaluatedHands[winnerIndex].Rank}");
+                    isDraw = false;
+                    for (int i = 0; i < evaluatedHands.Count; i++)
+                    {
+                        if (i != winnerIndex && evaluatedHands[i].CompareTo(evaluatedHands[winnerIndex]) == 0)
+                        {
+                            isDraw = true;
+                            break;
+                        }
+                    }
+
+                    if (!isDraw)
+                    {
+                        turnWinner = activePlayers[winnerIndex];
+                        turnWinner.HandsWonThisRound++;
+                        winnerPlayerID = turnWinner.PlayerID;
+                        Debug.Log($"Turn {CurrentTurnIndex + 1} Winner: {turnWinner.PlayerName} with {evaluatedHands[winnerIndex].Rank}");
+                    }
+                    else
+                    {
+                        winnerPlayerID = -1;
+                        Debug.Log($"Turn {CurrentTurnIndex + 1} is a draw.");
+                    }
                 }
 
                 // Show visual animation of the trick
                 if (VisualDealer.Instance != null)
                 {
-                    yield return StartCoroutine(VisualDealer.Instance.ShowTrickAnimation(rawHands, winnerPlayerID));
+                    yield return StartCoroutine(VisualDealer.Instance.ShowTrickAnimation(rawHands, winnerPlayerID, isDraw));
                 }
 
                 // Invoke event for UI
-                if (turnWinner != null)
-                {
-                    OnTurnPlayed?.Invoke(CurrentTurnIndex, evaluatedHands, turnWinner);
-                }
+                OnTurnPlayed?.Invoke(CurrentTurnIndex, evaluatedHands, turnWinner, isDraw);
 
                 CurrentTurnIndex++;
             }

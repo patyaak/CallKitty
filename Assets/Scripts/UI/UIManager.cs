@@ -12,6 +12,7 @@ namespace CallKitty.UI
         [SerializeField] private GameObject arrangementPanel;
         [SerializeField] private GameObject gameplayPanel;
         [SerializeField] private GameObject scoreboardPanel;
+        [SerializeField] private GameObject gameOverPanel;
 
         private void Awake()
         {
@@ -72,11 +73,12 @@ namespace CallKitty.UI
                     break;
                 case GameState.RoundScoring:
                     HideAllPanels();
-                    scoreboardPanel.SetActive(true);
+                    if (scoreboardPanel) scoreboardPanel.SetActive(true);
                     break;
                 case GameState.GameOver:
                     HideAllPanels();
-                    scoreboardPanel.SetActive(true);
+                    if (scoreboardPanel) scoreboardPanel.SetActive(true);
+                    if (gameOverPanel) gameOverPanel.SetActive(true);
                     break;
             }
         }
@@ -92,6 +94,7 @@ namespace CallKitty.UI
             if (arrangementPanel) arrangementPanel.SetActive(false);
             if (gameplayPanel) gameplayPanel.SetActive(false);
             if (scoreboardPanel) scoreboardPanel.SetActive(false);
+            if (gameOverPanel) gameOverPanel.SetActive(false);
         }
     }
 }

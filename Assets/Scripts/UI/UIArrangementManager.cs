@@ -18,10 +18,12 @@ namespace CallKitty.UI
         public Vector3 DiscardZonePosition => discardZone.transform.position;
 
         [Header("UI Elements")]
-        [SerializeField] private Button readyButton;
-        [SerializeField] private Button arrangeButton;
+        [SerializeField] public Button readyButton;
+        [SerializeField] public Button arrangeButton;
         [SerializeField] private Button scoreButton;
         [SerializeField] private GameObject uiCardPrefab;
+
+        private bool cardsReadyForArrangement;
 
         private class RankedUIHand
         {
@@ -126,6 +128,8 @@ namespace CallKitty.UI
 
         private void OnEnable()
         {
+            cardsReadyForArrangement = false;
+
             // Disable buttons initially until cards are properly dealt
             readyButton.gameObject.SetActive(false);
             readyButton.interactable = false;
@@ -136,13 +140,14 @@ namespace CallKitty.UI
             }
             if (scoreButton != null)
             {
-                scoreButton.gameObject.SetActive(false);
-                scoreButton.interactable = false;
+                scoreButton.gameObject.SetActive(true);
+                scoreButton.interactable = true;
             }
         }
 
         public void PopulateCards(List<Card> cards)
         {
+            cardsReadyForArrangement = true;
             SetAllCardsInteractable(true);
             // Cards are now instantiated and delivered directly into the unassignedPool by the VisualDealer.
             // We only need to check the initial validation state to ensure the Ready button is correct.
@@ -160,7 +165,7 @@ namespace CallKitty.UI
 
         public void OnCardMoved()
         {
-            if (GameManager.Instance.CurrentState == GameState.Arranging)
+            if (cardsReadyForArrangement && GameManager.Instance.CurrentState == GameState.Arranging)
             {
                 readyButton.gameObject.SetActive(true);
                 readyButton.interactable = ValidateArrangement();
@@ -180,6 +185,12 @@ namespace CallKitty.UI
             {
                 readyButton.gameObject.SetActive(false);
                 readyButton.interactable = false;
+
+                if (scoreButton != null)
+                {
+                    scoreButton.gameObject.SetActive(true);
+                    scoreButton.interactable = true;
+                }
                 
                 if (arrangeButton != null)
                 {
@@ -228,8 +239,8 @@ namespace CallKitty.UI
             }
             if (scoreButton != null)
             {
-                scoreButton.interactable = false;
-                scoreButton.gameObject.SetActive(false);
+                scoreButton.gameObject.SetActive(true);
+                scoreButton.interactable = true;
             }
             SetAllCardsInteractable(false);
 
@@ -275,11 +286,11 @@ namespace CallKitty.UI
                 arrangeButton.interactable = false;
             }
 
-            // Show score button during gameplay
+            // Keep score button available during gameplay
             if (scoreButton != null)
             {
-                scoreButton.gameObject.SetActive(false);
-                scoreButton.interactable = false;
+                scoreButton.gameObject.SetActive(true);
+                scoreButton.interactable = true;
             }
 
             // Hide discard zone during gameplay
@@ -395,11 +406,11 @@ namespace CallKitty.UI
                 SetAllCardsInteractable(true);
             }
 
-            // Hide score button when leaving gameplay
+            // Keep score button available after leaving gameplay
             if (scoreButton != null)
             {
-                scoreButton.gameObject.SetActive(false);
-                scoreButton.interactable = false;
+                scoreButton.gameObject.SetActive(true);
+                scoreButton.interactable = true;
             }
 
             // Show discard zone
